@@ -193,8 +193,8 @@ function placePet(petId: string): void {
   if (!e || selectedSlot.value === null) return
   try {
     e.placeTower(selectedSlot.value, petId)
-  } catch {
-    /* UI 已做前置校验，吞掉竞态错误 */
+  } catch (err) {
+    console.warn('[battle] 放置失败', err)
   }
   selectedSlot.value = null
 }
@@ -265,16 +265,20 @@ const lineupDefs = computed(() =>
 )
 
 const selectedTowerStats = computed(() => {
+  // 依赖快照：升级/出售/金币变化都会触发重算（引擎内部变更 Vue 无法追踪）
+  void snapshot.value
   if (selectedSlot.value === null || !engine.value) return null
   return engine.value.towerStats(selectedSlot.value)
 })
 
 const upgradeCost = computed(() => {
+  void snapshot.value
   if (selectedSlot.value === null || !engine.value) return null
   return engine.value.upgradeCost(selectedSlot.value)
 })
 
 const sellValue = computed(() => {
+  void snapshot.value
   if (selectedSlot.value === null || !engine.value) return null
   return engine.value.sellValue(selectedSlot.value)
 })

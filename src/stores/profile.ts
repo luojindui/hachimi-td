@@ -250,7 +250,10 @@ interface GachaShape {
 }
 
 /** 从对应稀有度卡池随机选一只并入库（新宠 or 转碎片） */
-function grantDraw(store: GachaShape, rarity: 'N' | 'R' | 'SR' | 'SSR'): DrawResult {
+function grantDraw(
+  store: GachaShape,
+  rarity: 'N' | 'R' | 'SR' | 'SSR',
+): DrawResult {
   const pool = PET_POOL[rarity]
   const petId = pool[Math.floor(Math.random() * pool.length)]!
   const owned = store.pets.find((p) => p.id === petId)

@@ -548,6 +548,9 @@ function drawEnemySpec(
 /* ============================================================
  * Provider
  * ============================================================ */
+
+/** 全部拥有矢量外观的宠物 id（与 PET_LIST 一致性由测试保证） */
+export const VECTOR_PET_IDS: readonly string[] = Object.keys(PET_SPECS)
 /** 全身高（局部单位），用于像素高度换算 */
 const PET_HEIGHT = 172
 const ENEMY_HEIGHT = 84

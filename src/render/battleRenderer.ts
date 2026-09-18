@@ -85,11 +85,8 @@ function seeded(seed: number): () => number {
 function drawScenery(
   ctx: CanvasRenderingContext2D,
   level: LevelDef,
-  tiles: { bg: string; path: string },
 ): void {
   const rand = seeded(level.theme.length * 7919 + level.grid.cols * 31)
-  const W = level.grid.cols * CELL_SIZE
-  const H = level.grid.rows * CELL_SIZE
   const pathCells = pathCellsOf(level)
   const occupied = new Set(level.buildSlots.map((s) => `${s.x},${s.y}`))
 
@@ -105,9 +102,6 @@ function drawScenery(
       placedCount++
     }
   }
-  void W
-  void H
-
   const grassTuft = (x: number, y: number): void => {
     strokePath(ctx, 'rgba(90,140,70,0.55)', 2.5, k => {
       k.moveTo(x - 5, y + 8); k.quadraticCurveTo(x - 7, y, x - 4, y - 8)
@@ -188,7 +182,6 @@ function drawScenery(
       place(3, (x, y) => rock(x, y))
       break
   }
-  void tiles
 }
 
 /** 逻辑画布尺寸 */
@@ -224,7 +217,7 @@ export function renderStaticLayer(
   ctx.fillRect(0, 0, W, H)
 
   /* ---- 主题装饰（L4 场景层，画在最底层） ---- */
-  drawScenery(ctx, level, tiles)
+  drawScenery(ctx, level)
 
   /* ---- 路径 ---- */
   ctx.fillStyle = tiles.path
