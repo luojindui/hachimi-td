@@ -162,6 +162,27 @@ describe('赏金结算', () => {
   })
 })
 
+describe('重击分支穿甲', () => {
+  it('heavy 分支无视 50% 护甲（盾甲鼠克星）', () => {
+    const heavy = makePet({
+      id: 't-heavy',
+      attack: 40,
+      attackInterval: 10,
+      range: 2.5,
+    })
+    const engine = makeEngine({
+      lineup: [heavy],
+      waves: [makeWave([{ enemyId: 'shield', count: 1, interval: 1 }], 0)],
+      firstWaveCountdown: 0.1,
+    })
+    engine.placeTower(1, heavy.id)
+    engine.upgradeTower(1, 'heavy')
+    // Lv2 heavy：攻击 = 40×2.2 = 88；armorMul 0.5 → 有效伤害 = 88×(100/125) = 70.4 → 95-70.4 = 24.6
+    advance(engine, 5)
+    expect(engine.getSnapshot().enemies[0]!.hp).toBeCloseTo(24.6, 0)
+  })
+})
+
 describe('鼠王嚎叫', () => {
   it('嚎叫后小怪获得加速标记', () => {
     const engine = makeEngine({

@@ -8,7 +8,7 @@ const COST_BANDS: Record<string, { min: number; max: number }> = {
   N: { min: 80, max: 120 },
   R: { min: 120, max: 180 },
   SR: { min: 180, max: 260 },
-  SSR: { min: 300, max: 400 },
+  SSR: { min: 280, max: 400 },
 }
 
 function dps(pet: PetDef): number {

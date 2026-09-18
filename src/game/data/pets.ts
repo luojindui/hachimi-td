@@ -351,7 +351,7 @@ export const PET_LIST: readonly PetDef[] = [
     rarity: 'SSR',
     role: 'cannon',
     targets: 'ground',
-    cost: 340,
+    cost: 280,
     attack: 75,
     attackInterval: 1.4,
     range: 2.6,

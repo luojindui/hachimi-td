@@ -25,7 +25,8 @@ const A = assets()
 
 /* ---------- 关卡解析（路由参数在挂载期固定） ---------- */
 
-const isDaily = route.query.daily === '1'
+const isDaily =
+  route.params.levelId === 'daily' || route.query.daily === '1'
 const challenge = isDaily ? getDailyChallenge(todayStr()) : null
 
 function resolveLevel(): LevelDef {
@@ -78,6 +79,10 @@ function starLevels(): Record<string, number> {
 
 function confirmLineup(): void {
   if (pickedIds.value.length === 0) return
+  if (isDaily && challenge?.commonOnly) {
+    const pet = pickedIds.value.map((id) => getPet(id))
+    if (pet.some((p) => p.rarity === 'SR' || p.rarity === 'SSR')) return
+  }
   profile.setLineup(pickedIds.value)
   battleStarted.value = true
   battle.start()
@@ -104,6 +109,11 @@ onMounted(() => {
 })
 
 /* ---------- 引擎循环 ---------- */
+
+/** 每日挑战 N/R 限定（规则公示与执行一致） */
+const dailyRarities = computed(() =>
+  isDaily && challenge?.commonOnly ? (['N', 'R'] as const) : undefined,
+)
 
 const battle = useBattleEngine(() => ({
   level,
@@ -336,7 +346,11 @@ function goHome(): void {
     <!-- 战前编队 -->
     <section v-if="!battleStarted" class="prep card">
       <h2 class="prep-title">{{ level.name }} · 出战编队</h2>
-      <LineupPicker v-model="pickedIds" :owned="profile.pets" />
+      <LineupPicker
+        v-model="pickedIds"
+        :owned="profile.pets"
+        :allowed-rarities="dailyRarities"
+      />
       <div class="prep-actions">
         <button class="btn btn-ghost" @click="goHome">返回</button>
         <button

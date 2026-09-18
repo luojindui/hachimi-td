@@ -160,9 +160,9 @@ describe('奖励分布抽样（对称钉板健康度）', () => {
       if (machine.slots[slot]!.jackpot) jackpots++
     }
     const mean = sum / n
-    // 对称钉板 + 护墙钉后：均值应显著回落并集中在设计区间
-    expect(mean).toBeGreaterThanOrEqual(80)
-    expect(mean).toBeLessThanOrEqual(160)
+    // 奖励表 ×0.65 重校后：均值 ≈100（RTP≈1.0~1.1）
+    expect(mean).toBeGreaterThanOrEqual(60)
+    expect(mean).toBeLessThanOrEqual(140)
     // 大奖不再可被贴墙走廊白嫖：占比 < 20%
     expect(jackpots / n).toBeLessThan(0.2)
   })

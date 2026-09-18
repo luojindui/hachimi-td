@@ -3,19 +3,26 @@ import { computed } from 'vue'
 
 import { getPet } from '@/game/data/pets'
 import { LINEUP_SIZE } from '@/game/data/balance'
+import type { Rarity } from '@/game/types'
 import type { OwnedPet } from '@/stores/profile'
 import PetAvatar from '@/components/common/PetAvatar.vue'
 
 const props = defineProps<{
   owned: readonly OwnedPet[]
   modelValue: string[]
+  /** 限定可出战宠物的稀有度（每日挑战规则） */
+  allowedRarities?: readonly Rarity[]
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [ids: string[]]
 }>()
 
-const ownedPets = computed(() => props.owned.map((p) => getPet(p.id)))
+const ownedPets = computed(() =>
+  props.owned
+    .filter((p) => !props.allowedRarities || props.allowedRarities.includes(getPet(p.id).rarity))
+    .map((p) => getPet(p.id)),
+)
 const starsOf = (petId: string): number =>
   props.owned.find((p) => p.id === petId)?.stars ?? 1
 

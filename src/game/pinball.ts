@@ -61,7 +61,7 @@ export const PINBALL = {
 
 /** 底部 7 槽（对称：边缘窄槽大奖，中间宽槽小奖），按内宽比例分割 */
 const SLOT_FRACTIONS = [0.09, 0.13, 0.17, 0.22, 0.17, 0.13, 0.09] as const
-const SLOT_REWARDS = [400, 60, 100, 25, 100, 60, 400] as const
+const SLOT_REWARDS = [260, 40, 65, 15, 65, 40, 260] as const
 
 function buildSlots(): PinballSlot[] {
   const slots: PinballSlot[] = []

@@ -237,6 +237,7 @@ function applySaveTo(store: ProfileShape, data: SaveDataV1): void {
   store.gacha = { ...data.gacha }
   store.starMilestones = [...data.starMilestones]
   store.talents = [...data.talents]
+  store.daily = { ...data.daily }
   store.stats = { ...data.stats }
 }
 

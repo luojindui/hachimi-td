@@ -278,14 +278,7 @@ describe('每种强化的行为断言', () => {
       drafts: false,
     })
     engine.placeTower(1, sniper30.id)
-    for (let t = 0; t <= 30; t++) {
-      advance(engine, 0.1)
-      const s2 = engine.getSnapshot()
-      if (t % 3 === 0) console.log('TRACE', t / 10, 'x=' + s2.enemies[0]?.x.toFixed(2), 'hp=' + s2.enemies[0]?.hp, 'spawned=' + (s2.time > 0.1), 'wave=' + s2.waveInProgress)
-    }
     advance(engine, 5)
-    const s = engine.getSnapshot()
-    console.log('DEBUG', JSON.stringify({ enemies: s.enemies.map(e => ({ x: +e.x.toFixed(2), hp: e.hp })), projs: s.projectiles.length, gold: engine.getGold(), kills: s.kills, towers: s.towers.length, outcome: s.outcome, time: +s.time.toFixed(2) }))
   })
 
   it('rapidFire：interval ×0.8475（攻速 +18%）', () => {

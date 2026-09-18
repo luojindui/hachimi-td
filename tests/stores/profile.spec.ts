@@ -239,3 +239,25 @@ describe('导出导入与重置', () => {
     expect(store.catnip).toBe(1200)
   })
 })
+
+describe('每日挑战持久化', () => {
+  it('claimDaily 写入存档，刷新后不重复领取', async () => {
+    const store = useProfileStore()
+    store.init()
+    store.completeLevel('1', 3, 0)
+    const date = '2025-09-18'
+    const gained = store.claimDaily(date)
+    expect(gained).toBeGreaterThan(0)
+    expect(store.daily.lastClaimDate).toBe(date)
+
+    // 模拟刷新：新 store 从存档装载
+    const saved = localStorage.getItem('hachimi-td:save:v1')!
+    localStorage.clear()
+    localStorage.setItem('hachimi-td:save:v1', saved)
+    setActivePinia(createPinia())
+    const fresh = useProfileStore()
+    fresh.init()
+    expect(fresh.daily.lastClaimDate).toBe(date)
+    expect(fresh.claimDaily(date)).toBe(0)
+  })
+})

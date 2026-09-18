@@ -471,7 +471,7 @@ const LEVEL_LIST: readonly LevelDef[] = [
     ],
     baseHp: 20,
     startGold: 450,
-    hpMul: 2.15,
+    hpMul: 1.95,
     speedMul: 1.05,
     firstClearCatnip: 300,
     repeatClearCatnip: 60,

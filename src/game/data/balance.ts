@@ -20,6 +20,8 @@ interface BranchLevel {
   attackMul: number
   rangeBonus: number
   intervalMul: number
+  /** 护甲穿透：敌人有效护甲 × 此系数（1 = 无穿透） */
+  armorMul: number
 }
 
 export const TOWER_PATHS: readonly TowerPath[] = ['quick', 'heavy']
@@ -32,18 +34,18 @@ export const TOWER_BRANCHES: Record<
     name: '速攻',
     desc: '攻速流：攻速成长快，射程小幅扩大',
     levels: [
-      { level: 1, attackMul: 1.0, rangeBonus: 0, intervalMul: 1.0 },
-      { level: 2, attackMul: 1.6, rangeBonus: 0.2, intervalMul: 0.8 },
-      { level: 3, attackMul: 2.4, rangeBonus: 0.4, intervalMul: 0.65 },
+      { level: 1, attackMul: 1.0, rangeBonus: 0, intervalMul: 1.0, armorMul: 1 },
+      { level: 2, attackMul: 1.6, rangeBonus: 0.2, intervalMul: 0.8, armorMul: 1 },
+      { level: 3, attackMul: 2.4, rangeBonus: 0.4, intervalMul: 0.65, armorMul: 1 },
     ],
   },
   heavy: {
     name: '重击',
-    desc: '爆发流：单发伤害成长快',
+    desc: '爆破流：单发伤害高，无视 50% 护甲（盾甲鼠克星）',
     levels: [
-      { level: 1, attackMul: 1.0, rangeBonus: 0, intervalMul: 1.0 },
-      { level: 2, attackMul: 2.2, rangeBonus: 0.1, intervalMul: 1.1 },
-      { level: 3, attackMul: 3.4, rangeBonus: 0.2, intervalMul: 1.2 },
+      { level: 1, attackMul: 1.0, rangeBonus: 0, intervalMul: 1.0, armorMul: 0.5 },
+      { level: 2, attackMul: 2.2, rangeBonus: 0.1, intervalMul: 1.1, armorMul: 0.5 },
+      { level: 3, attackMul: 3.4, rangeBonus: 0.2, intervalMul: 1.2, armorMul: 0.5 },
     ],
   },
 }

@@ -104,6 +104,8 @@ interface EngineProjectile {
   petId: string
   /** 发射塔的可打击目标类型（溅射结算需按此过滤） */
   targets: TargetKind
+  /** 护甲穿透系数 */
+  armorMul: number
   x: number
   y: number
   targetUid: number
@@ -647,6 +649,7 @@ export class GameEngine {
     interval: number
     range: number
     splash: number
+    armorMul: number
   } {
     const lv = this.towerLevelConfig(tower.level, tower.path ?? 'quick')
     const attackSpeedMul = 1 + this.bestAuraValue(tower, 'attackSpeed')
@@ -667,6 +670,7 @@ export class GameEngine {
       attack,
       interval,
       range,
+      armorMul: lv.armorMul,
       // 范围扩张只对已有溅射的宠物扩张（不给单体凭空加 AoE）
       splash:
         (tower.def.splash ?? 0) > 0
@@ -681,6 +685,7 @@ export class GameEngine {
     interval: number
     range: number
     splash: number
+    armorMul: number
     level: 1 | 2 | 3
   } | null {
     const tower = this.towers[slotIndex]
@@ -702,6 +707,7 @@ export class GameEngine {
         uid: this.nextProjUid++,
         petId: tower.def.id,
         targets: tower.def.targets,
+        armorMul: stats.armorMul,
         x: tower.x,
         y: tower.y,
         targetUid: target.uid,
@@ -785,7 +791,7 @@ export class GameEngine {
 
   private impact(proj: EngineProjectile, target: EngineEnemy): void {
     this.addEffect('hit', target.x, target.y)
-    this.applyDamage(target, proj.damage)
+    this.applyDamage(target, proj.damage, proj.armorMul)
     if (proj.slow) this.applySlow(target, proj.slow)
 
     if (proj.splash > 0) {
@@ -797,13 +803,17 @@ export class GameEngine {
         const dx = enemy.x - target.x
         const dy = enemy.y - target.y
         if (dx * dx + dy * dy > proj.splash * proj.splash) continue
-        this.applyDamage(enemy, splashDamage)
+        this.applyDamage(enemy, splashDamage, proj.armorMul)
         if (proj.slow) this.applySlow(enemy, proj.slow)
       }
     }
   }
 
-  private applyDamage(enemy: EngineEnemy, rawDamage: number): void {
+  private applyDamage(
+    enemy: EngineEnemy,
+    rawDamage: number,
+    armorMul = 1,
+  ): void {
     if (enemy.hp <= 0) return
     // 防御：非法伤害值（NaN/负数）直接忽略，防止污染经济与生死判定
     if (!Number.isFinite(rawDamage) || rawDamage < 0) return
@@ -812,7 +822,8 @@ export class GameEngine {
     if (this.buffs.crit > 0 && this.rng() < this.buffs.crit) {
       damage *= CRIT.DAMAGE
     }
-    const effective = damage * (ARMOR_K / (ARMOR_K + enemy.def.armor))
+    const armor = Math.max(0, enemy.def.armor * armorMul)
+    const effective = damage * (ARMOR_K / (ARMOR_K + armor))
     enemy.hp -= effective
     enemy.flashUntil = this.now + 0.12
     if (enemy.hp > 0) return
