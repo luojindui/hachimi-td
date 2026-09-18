@@ -38,7 +38,7 @@ watchEffect(() => {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  renderBattle(ctx, snap, props.level, props.highlight ?? null)
+  renderBattle(ctx, snap, props.level, props.highlight ?? null, performance.now() / 1000)
 })
 
 /** 供拖拽逻辑读取画布元素做命中检测 */

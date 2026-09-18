@@ -31,6 +31,7 @@ const A = assets()
           v-for="i in 3"
           :key="i"
           :class="['star', i <= props.stars ? 'lit' : '']"
+          :style="{ animationDelay: `${(i - 1) * 0.18}s` }"
         >
           {{ A.icon('star') }}
         </span>
@@ -102,6 +103,16 @@ const A = assets()
 .star.lit {
   filter: none;
   opacity: 1;
+  animation: star-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes star-pop {
+  from {
+    transform: scale(0.2) rotate(-30deg);
+  }
+  to {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 .line {

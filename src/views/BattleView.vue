@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getPet } from '@/game/data/pets'
@@ -69,6 +69,26 @@ function confirmLineup(): void {
   battleStarted.value = true
   battle.start()
 }
+
+// 调试/演示辅助：?autostart=1 跳过编队确认直接开战（用于自动化截图验证）
+onMounted(() => {
+  if (!battleStarted.value && route.query.autostart === '1' && pickedIds.value.length > 0) {
+    confirmLineup()
+    // 演示布阵：把编队宠物按顺序放到前几个建造格
+    const demoSlots = [1, 0, 2, 4, 3, 5]
+    let si = 0
+    for (const id of pickedIds.value) {
+      while (si < demoSlots.length) {
+        const slot = demoSlots[si]!
+        si++
+        if (engine.value?.canPlace(slot, id).ok) {
+          engine.value.placeTower(slot, id)
+          break
+        }
+      }
+    }
+  }
+})
 
 /* ---------- 引擎循环 ---------- */
 

@@ -15,6 +15,7 @@ import { pointAtDistance, totalPathLength } from '../path'
 import type {
   BattleOutcome,
   BattleSnapshot,
+  EffectView,
   EnemyDef,
   EnemyView,
   FloatTextView,
@@ -40,6 +41,10 @@ interface EngineEnemy {
   dist: number
   x: number
   y: number
+  /** 移动朝向（弧度），渲染翻转用 */
+  facing: number
+  /** 受击闪白截止时刻 */
+  flashUntil: number
   /** 当前减速乘数（1 = 未减速，取最强减速） */
   slowFactor: number
   slowTimer: number
@@ -60,6 +65,19 @@ interface EngineTower {
   lastInterval: number
   /** 建造 + 升级累计投入 */
   invested: number
+  /** 放置时刻（逻辑秒），渲染层放置弹跳用 */
+  spawnAt: number
+}
+
+type EffectKind = 'poof' | 'hit' | 'coin' | 'howl'
+
+interface EngineEffect {
+  uid: number
+  kind: EffectKind
+  x: number
+  y: number
+  born: number
+  life: number
 }
 
 interface EngineProjectile {
@@ -137,10 +155,12 @@ export class GameEngine {
   private towers: (EngineTower | undefined)[] = []
   private projectiles: EngineProjectile[] = []
   private floats: EngineFloatText[] = []
+  private effects: EngineEffect[] = []
 
   private nextEnemyUid = 1
   private nextProjUid = 1
   private nextFloatUid = 1
+  private nextEffectUid = 1
   private acc = 0
   private speedMultiplier: 1 | 2 = 1
 
@@ -276,6 +296,7 @@ export class GameEngine {
       cooldown: 0,
       lastInterval: pet.attackInterval,
       invested: pet.cost,
+      spawnAt: this.now,
     }
   }
 
@@ -376,6 +397,7 @@ export class GameEngine {
     this.tickProjectiles(dt)
     this.removeDeadEnemies()
     this.tickFloats(dt)
+    this.tickEffects()
     this.checkWaveCleared()
   }
 
@@ -426,6 +448,9 @@ export class GameEngine {
     )
     const speed =
       def.speed * this.level.speedMul * (wave?.speedMul ?? 1)
+    // 初始朝向：沿路径第一段方向
+    const p0 = this.level.path[0]!
+    const p1 = this.level.path[1] ?? p0
     this.enemies.push({
       uid: this.nextEnemyUid++,
       def,
@@ -433,10 +458,12 @@ export class GameEngine {
       maxHp: hp,
       speed,
       dist: 0,
-      x: this.level.path[0]!.x,
-      y: this.level.path[0]!.y,
+      x: p0.x,
+      y: p0.y,
+      facing: Math.atan2(p1.y - p0.y, p1.x - p0.x),
       slowFactor: 1,
       slowTimer: 0,
+      flashUntil: 0,
       howlUntil: 0,
       howlTimer: def.boss ? ENGINE.BOSS_HOWL.interval : 0,
     })
@@ -448,6 +475,7 @@ export class GameEngine {
       enemy.howlTimer -= dt
       if (enemy.howlTimer <= 0) {
         enemy.howlTimer = ENGINE.BOSS_HOWL.interval
+        this.addEffect('howl', enemy.x, enemy.y)
         for (const other of this.enemies) {
           if (other.def.boss) continue
           other.howlUntil = this.now + ENGINE.BOSS_HOWL.duration
@@ -461,11 +489,18 @@ export class GameEngine {
     for (const enemy of this.enemies) {
       const howlMul =
         enemy.howlUntil > this.now ? 1 + ENGINE.BOSS_HOWL.speedBonus : 1
-      enemy.dist += enemy.speed * enemy.slowFactor * howlMul * dt
+      const step = enemy.speed * enemy.slowFactor * howlMul * dt
+      enemy.dist += step
       enemy.slowTimer -= dt
       if (enemy.slowTimer <= 0) enemy.slowFactor = 1
 
       const at = pointAtDistance(this.level.path, enemy.dist)
+      // 朝向随移动方向更新（渲染层翻转用）
+      const dx = at.pos.x - enemy.x
+      const dy = at.pos.y - enemy.y
+      if (dx * dx + dy * dy > 1e-9) {
+        enemy.facing = Math.atan2(dy, dx)
+      }
       enemy.x = at.pos.x
       enemy.y = at.pos.y
 
@@ -488,6 +523,27 @@ export class GameEngine {
       survivors.push(enemy)
     }
     this.enemies = survivors
+  }
+
+  /** 添加粒子特效（死亡爆散/命中/金币/嚎叫） */
+  private addEffect(kind: EffectKind, x: number, y: number): void {
+    const life = kind === 'poof' ? 0.5 : kind === 'hit' ? 0.25 : 0.6
+    if (this.effects.length >= ENGINE.FLOAT_TEXT_MAX * 2) this.effects.shift()
+    this.effects.push({
+      uid: this.nextEffectUid++,
+      kind,
+      x,
+      y,
+      born: this.now,
+      life,
+    })
+  }
+
+  private tickEffects(): void {
+    if (this.effects.length === 0) return
+    this.effects = this.effects.filter(
+      (e) => this.now - e.born < e.life,
+    )
   }
 
   /** 计算塔在当前光环/星级/等级下的实际战斗属性 */
@@ -617,6 +673,7 @@ export class GameEngine {
   }
 
   private impact(proj: EngineProjectile, target: EngineEnemy): void {
+    this.addEffect('hit', target.x, target.y)
     this.applyDamage(target, proj.damage)
     if (proj.slow) this.applySlow(target, proj.slow)
 
@@ -641,15 +698,18 @@ export class GameEngine {
     if (!Number.isFinite(rawDamage) || rawDamage < 0) return
     const effective = rawDamage * (ARMOR_K / (ARMOR_K + enemy.def.armor))
     enemy.hp -= effective
+    enemy.flashUntil = this.now + 0.12
     if (enemy.hp > 0) return
 
-    // 击杀
+    // 击杀：爆散 + 金币特效
     this.kills++
     const goldMul = 1 + this.goldAuraAt(enemy.x, enemy.y)
     const flat = this.flatBountyBonus()
     const gained = Math.round(enemy.def.bounty * goldMul) + flat
     this.gold += gained
     this.addFloat(`+${gained}`, enemy.x, enemy.y, 'gold')
+    this.addEffect('poof', enemy.x, enemy.y)
+    this.addEffect('coin', enemy.x, enemy.y - 0.4)
   }
 
   private applySlow(enemy: EngineEnemy, spec: SlowSpec): void {
@@ -761,6 +821,8 @@ export class GameEngine {
       boss: e.def.boss,
       slowed: e.slowTimer > 0,
       howled: e.howlUntil > this.now,
+      flash: e.flashUntil > this.now,
+      facing: e.facing,
     }))
     const towers: TowerView[] = this.towers
       .filter((t): t is EngineTower => t !== undefined)
@@ -776,6 +838,7 @@ export class GameEngine {
           t.lastInterval > 0
             ? Math.max(0, Math.min(1, t.cooldown / t.lastInterval))
             : 0,
+        spawnAt: t.spawnAt,
       }))
     const projectiles: ProjectileView[] = this.projectiles.map((p) => ({
       id: p.uid,
@@ -792,6 +855,13 @@ export class GameEngine {
       life: f.life,
       kind: f.kind,
     }))
+    const effects: EffectView[] = this.effects.map((e) => ({
+      id: e.uid,
+      x: e.x,
+      y: e.y,
+      kind: e.kind,
+      progress: Math.max(0, Math.min(1, (this.now - e.born) / e.life)),
+    }))
 
     return {
       outcome: this.outcome,
@@ -804,10 +874,12 @@ export class GameEngine {
       nextWaveCountdown:
         this.phase === 'countdown' ? Math.max(0, this.countdown) : 0,
       speed: this.speedMultiplier,
+      time: this.now,
       enemies,
       towers,
       projectiles,
       floatTexts,
+      effects,
       kills: this.kills,
     }
   }

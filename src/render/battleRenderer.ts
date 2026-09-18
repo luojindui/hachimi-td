@@ -44,6 +44,153 @@ function emoji(
   ctx.fillText(text, x, y)
 }
 
+function circle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill()
+}
+
+function ell(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, rx: number, ry: number, rot = 0,
+): void {
+  ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); ctx.fill()
+}
+
+function rr(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number,
+): void {
+  roundedRect(ctx, x, y, w, h, r)
+}
+
+function strokePath(
+  ctx: CanvasRenderingContext2D,
+  style: string | CanvasGradient,
+  w: number,
+  fn: (k: CanvasRenderingContext2D) => void,
+): void {
+  ctx.strokeStyle = style; ctx.lineWidth = w; ctx.lineCap = 'round'
+  ctx.beginPath(); fn(ctx); ctx.stroke()
+}
+
+/** 确定性伪随机（场景装饰位置固定，不随帧抖动） */
+function seeded(seed: number): () => number {
+  let s = seed >>> 0
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0
+    return s / 0xffffffff
+  }
+}
+
+/** 每关主题装饰（L4 场景层）：简单矢量道具散布在非路径区域 */
+function drawScenery(
+  ctx: CanvasRenderingContext2D,
+  level: LevelDef,
+  tiles: { bg: string; path: string },
+): void {
+  const rand = seeded(level.theme.length * 7919 + level.grid.cols * 31)
+  const W = level.grid.cols * CELL_SIZE
+  const H = level.grid.rows * CELL_SIZE
+  const pathCells = pathCellsOf(level)
+  const occupied = new Set(level.buildSlots.map((s) => `${s.x},${s.y}`))
+
+  const place = (count: number, draw: (x: number, y: number, r: () => number) => void): void => {
+    let tries = 0
+    let placedCount = 0
+    while (placedCount < count && tries < count * 20) {
+      tries++
+      const gx = Math.floor(rand() * level.grid.cols)
+      const gy = Math.floor(rand() * level.grid.rows)
+      if (pathCells.has(`${gx},${gy}`) || occupied.has(`${gx},${gy}`)) continue
+      draw(gx * CELL_SIZE + CELL_SIZE / 2, gy * CELL_SIZE + CELL_SIZE / 2, rand)
+      placedCount++
+    }
+  }
+  void W
+  void H
+
+  const grassTuft = (x: number, y: number): void => {
+    strokePath(ctx, 'rgba(90,140,70,0.55)', 2.5, k => {
+      k.moveTo(x - 5, y + 8); k.quadraticCurveTo(x - 7, y, x - 4, y - 8)
+      k.moveTo(x, y + 8); k.quadraticCurveTo(x + 1, y - 2, x - 1, y - 11)
+      k.moveTo(x + 5, y + 8); k.quadraticCurveTo(x + 8, y, x + 4, y - 7)
+    })
+  }
+  const flower = (x: number, y: number, petal: string): void => {
+    ctx.fillStyle = petal
+    for (let i = 0; i < 5; i++) {
+      const a = (i * Math.PI * 2) / 5
+      circle(ctx, x + Math.cos(a) * 5, y + Math.sin(a) * 5, 3.4)
+    }
+    ctx.fillStyle = '#f5c542'
+    circle(ctx, x, y, 2.8)
+  }
+  const bush = (x: number, y: number): void => {
+    ctx.fillStyle = 'rgba(70,120,60,0.5)'
+    circle(ctx, x - 8, y, 11)
+    circle(ctx, x + 8, y, 11)
+    circle(ctx, x, y - 8, 12)
+  }
+  const star = (x: number, y: number): void => {
+    ctx.fillStyle = 'rgba(255,240,200,0.85)'
+    circle(ctx, x, y, 1.6 + rand() * 1.2)
+  }
+  const rock = (x: number, y: number): void => {
+    ctx.fillStyle = 'rgba(120,115,105,0.6)'
+    ell(ctx, x, y, 10, 7)
+    ctx.fillStyle = 'rgba(160,155,145,0.5)'
+    ell(ctx, x - 3, y - 3, 5, 3.4)
+  }
+  const sack = (x: number, y: number): void => {
+    ctx.fillStyle = 'rgba(196,166,110,0.85)'
+    ell(ctx, x, y, 12, 10)
+    ctx.fillStyle = 'rgba(150,122,74,0.85)'
+    rr(ctx, x - 6, y - 14, 12, 6, 3); ctx.fill()
+  }
+
+  switch (level.theme) {
+    case 'yard':
+      place(8, (x, y) => grassTuft(x, y))
+      place(4, (x, y) => flower(x, y, '#ff9db4'))
+      break
+    case 'hall':
+      place(6, (x, y) => rock(x, y))
+      place(4, (x, y) => grassTuft(x, y))
+      break
+    case 'garden':
+      place(6, (x, y) => bush(x, y))
+      place(5, (x, y) => flower(x, y, '#f2a54a'))
+      break
+    case 'park':
+      place(5, (x, y) => bush(x, y))
+      place(4, (x, y) => flower(x, y, '#ffb3c0'))
+      place(3, (x, y) => grassTuft(x, y))
+      break
+    case 'night':
+      place(14, (x, y) => star(x, y))
+      place(3, (x, y) => rock(x, y))
+      break
+    case 'rooftop':
+      place(6, (x, y) => star(x, y))
+      place(4, (x, y) => grassTuft(x, y))
+      place(2, (x, y) => rock(x, y))
+      break
+    case 'granaryOut':
+      place(4, (x, y) => sack(x, y))
+      place(4, (x, y) => rock(x, y))
+      place(3, (x, y) => grassTuft(x, y))
+      break
+    case 'granary':
+      place(5, (x, y) => sack(x, y))
+      place(3, (x, y) => rock(x, y))
+      break
+    case 'endless':
+      place(18, (x, y) => star(x, y))
+      place(3, (x, y) => rock(x, y))
+      break
+  }
+  void tiles
+}
+
 /** 逻辑画布尺寸 */
 export function battleCanvasSize(level: LevelDef): {
   width: number
@@ -62,12 +209,14 @@ export interface RenderHighlight {
 /**
  * 把一帧战斗快照画到画布上（逻辑像素坐标，调用方负责 dpr 缩放）。
  * 纯函数式：只读快照与关卡定义，无内部状态。
+ * animTime：驱动循环动画的秒数（调用方传引擎时钟或性能时钟）。
  */
 export function renderBattle(
   ctx: CanvasRenderingContext2D,
   snapshot: BattleSnapshot,
   level: LevelDef,
   highlight?: RenderHighlight | null,
+  animTime = 0,
 ): void {
   const A = assets()
   const tiles = A.tiles(level.theme)
@@ -77,6 +226,9 @@ export function renderBattle(
   /* ---- 场地 ---- */
   ctx.fillStyle = tiles.bg
   ctx.fillRect(0, 0, W, H)
+
+  /* ---- 主题装饰（L4 场景层，画在最底层） ---- */
+  drawScenery(ctx, level, tiles)
 
   /* ---- 路径 ---- */
   ctx.fillStyle = tiles.path
@@ -183,7 +335,27 @@ export function renderBattle(
     ctx.fill()
     ctx.stroke()
 
-    emoji(ctx, visual.emoji, cx, cy + 2, 28 * visual.scale)
+    // 攻击后坐（刚发射时轻微压缩）与放置弹跳
+    const recoil =
+      tower.cooldownRatio > 0.85 ? (tower.cooldownRatio - 0.85) / 0.15 : 0
+    const sinceSpawn = Math.max(0, snapshot.time - tower.spawnAt)
+
+    if (A.drawPet) {
+      ctx.save()
+      if (recoil > 0) {
+        ctx.translate(cx, cy + 2)
+        ctx.scale(1 - recoil * 0.08, 1 + recoil * 0.06)
+        ctx.translate(-cx, -(cy + 2))
+      }
+      A.drawPet(ctx, tower.petId, cx, cy + 4, 56 * visual.scale, {
+        t: animTime,
+        phase: tower.slotIndex * 1.7,
+        sinceSpawn,
+      })
+      ctx.restore()
+    } else {
+      emoji(ctx, visual.emoji, cx, cy + 2, 28 * visual.scale)
+    }
 
     // 等级标记点
     ctx.fillStyle = ring
@@ -207,15 +379,23 @@ export function renderBattle(
     ctx.ellipse(cx, enemy.y * CELL_SIZE + CELL_SIZE / 2 + 14, size * 0.6, 6, 0, 0, Math.PI * 2)
     ctx.fill()
 
-    // 识别色圆底
-    ctx.fillStyle = visual.tint
-    ctx.globalAlpha = 0.92
-    ctx.beginPath()
-    ctx.arc(cx, cy, size, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.globalAlpha = 1
-
-    emoji(ctx, visual.emoji, cx, cy, size * 1.5)
+    if (A.drawEnemy) {
+      A.drawEnemy(ctx, enemy.enemyId, cx, cy, (enemy.boss ? 62 : 46) * visual.scale, {
+        t: animTime,
+        phase: enemy.id,
+        flash: enemy.flash,
+        facing: enemy.facing,
+      })
+    } else {
+      // 识别色圆底
+      ctx.fillStyle = visual.tint
+      ctx.globalAlpha = 0.92
+      ctx.beginPath()
+      ctx.arc(cx, cy, size, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
+      emoji(ctx, visual.emoji, cx, cy, size * 1.5)
+    }
 
     // 状态标记
     if (enemy.slowed) {
@@ -224,6 +404,12 @@ export function renderBattle(
       ctx.beginPath()
       ctx.arc(cx, cy, size + 3, 0, Math.PI * 2)
       ctx.stroke()
+      // 冰霜小点
+      ctx.fillStyle = 'rgba(160,220,255,0.9)'
+      for (let i = 0; i < 3; i++) {
+        const a = animTime * 2 + (i * Math.PI * 2) / 3
+        circle(ctx, cx + Math.cos(a) * (size + 6), cy + Math.sin(a) * (size + 6) * 0.5, 1.8)
+      }
     }
     if (enemy.howled) {
       ctx.fillStyle = '#ffd75e'
@@ -244,13 +430,69 @@ export function renderBattle(
     }
   }
 
-  /* ---- 弹道（视觉经素材注册表解析，可整体替换） ---- */
+  /* ---- 弹道（视觉经素材注册表解析，可整体替换）＋ 尾迹 ---- */
   for (const proj of snapshot.projectiles) {
+    const px = proj.x * CELL_SIZE + CELL_SIZE / 2
+    const py = proj.y * CELL_SIZE + CELL_SIZE / 2
+    // 尾迹
+    const trail = 16
+    const grad = ctx.createLinearGradient(
+      px - Math.cos(proj.angle) * trail,
+      py - Math.sin(proj.angle) * trail,
+      px,
+      py,
+    )
+    grad.addColorStop(0, 'rgba(255,255,255,0)')
+    grad.addColorStop(1, 'rgba(255,235,190,0.75)')
+    strokePath(ctx, grad, 4, k => {
+      k.moveTo(px - Math.cos(proj.angle) * trail, py - Math.sin(proj.angle) * trail)
+      k.lineTo(px, py)
+    })
     ctx.save()
-    ctx.translate(proj.x * CELL_SIZE + CELL_SIZE / 2, proj.y * CELL_SIZE + CELL_SIZE / 2)
+    ctx.translate(px, py)
     ctx.rotate(proj.angle)
     emoji(ctx, A.projectileOf(proj.petId), 0, 0, 18)
     ctx.restore()
+  }
+
+  /* ---- 粒子特效（死亡爆散/命中/金币/嚎叫） ---- */
+  for (const fx of snapshot.effects) {
+    const fx2 = fx.x * CELL_SIZE + CELL_SIZE / 2
+    const fy = fx.y * CELL_SIZE + CELL_SIZE / 2
+    const p = fx.progress
+    if (fx.kind === 'poof') {
+      ctx.globalAlpha = 1 - p
+      ctx.fillStyle = '#efe6d6'
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2 + 0.5
+        const r = 6 + p * 20
+        circle(ctx, fx2 + Math.cos(a) * r, fy + Math.sin(a) * r, 7 - p * 4)
+      }
+      ctx.fillStyle = '#fff'
+      circle(ctx, fx2, fy, 10 - p * 6)
+      ctx.globalAlpha = 1
+    } else if (fx.kind === 'hit') {
+      ctx.globalAlpha = 1 - p
+      ctx.fillStyle = '#ffe9a8'
+      circle(ctx, fx2, fy, 9 - p * 5)
+      ctx.fillStyle = '#fff'
+      circle(ctx, fx2, fy, 4 - p * 3)
+      ctx.globalAlpha = 1
+    } else if (fx.kind === 'coin') {
+      ctx.globalAlpha = 1 - p
+      ctx.fillStyle = '#f5c542'
+      circle(ctx, fx2 - 5 + p * 4, fy - p * 24, 4)
+      circle(ctx, fx2 + 5 - p * 2, fy - p * 30, 3.2)
+      ctx.fillStyle = '#e8940f'
+      circle(ctx, fx2, fy - p * 20, 3.6)
+      ctx.globalAlpha = 1
+    } else if (fx.kind === 'howl') {
+      ctx.strokeStyle = `rgba(255,215,94,${(1 - p).toFixed(2)})`
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.arc(fx2, fy, 14 + p * 42, 0, Math.PI * 2)
+      ctx.stroke()
+    }
   }
 
   /* ---- 漂浮文字 ---- */

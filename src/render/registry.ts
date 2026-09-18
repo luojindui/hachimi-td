@@ -1,7 +1,7 @@
 import type { AssetProvider } from './types'
-import { createEmojiProvider } from './providers/emoji'
+import { createVectorProvider } from './providers/vector'
 
-let active: AssetProvider = createEmojiProvider()
+let active: AssetProvider = createVectorProvider()
 
 /** 获取当前素材提供方（渲染层一律经此访问视觉资源） */
 export function assets(): AssetProvider {

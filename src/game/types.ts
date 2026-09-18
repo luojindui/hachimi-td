@@ -161,6 +161,8 @@ export interface TowerView {
   y: number
   level: 1 | 2 | 3
   cooldownRatio: number
+  /** 放置时刻（逻辑秒），渲染层用于放置弹跳 */
+  spawnAt: number
 }
 
 export interface EnemyView {
@@ -176,6 +178,21 @@ export interface EnemyView {
   slowed: boolean
   /** 被鼠王嚎叫加速中的视觉标记 */
   howled: boolean
+  /** 受击闪白（短暂） */
+  flash: boolean
+  /** 移动朝向（弧度，0 = 向右） */
+  facing: number
+}
+
+export type EffectKind = 'poof' | 'hit' | 'coin' | 'howl'
+
+export interface EffectView {
+  id: number
+  x: number
+  y: number
+  kind: EffectKind
+  /** 0~1 生命进度（0 刚诞生，1 即将消失） */
+  progress: number
 }
 
 export interface ProjectileView {
@@ -212,9 +229,13 @@ export interface BattleSnapshot {
   nextWaveCountdown: number
   /** 当前游戏速度倍率 */
   speed: 1 | 2
+  /** 引擎逻辑时钟（秒），驱动渲染层循环动画 */
+  time: number
   enemies: readonly EnemyView[]
   towers: readonly TowerView[]
   projectiles: readonly ProjectileView[]
   floatTexts: readonly FloatTextView[]
+  /** 粒子特效（死亡爆散/命中/金币/嚎叫冲击波） */
+  effects: readonly EffectView[]
   kills: number
 }
