@@ -377,6 +377,13 @@ export const useProfileStore = defineStore('profile', {
       }
     },
 
+    /** 直接增加猫薄荷（弹珠机等玩法奖励） */
+    addCatnip(amount: number): void {
+      if (!Number.isFinite(amount) || amount <= 0) return
+      this.catnip += Math.floor(amount)
+      this.persist()
+    },
+
     /** 编辑出战编队（去重、限 6 只、仅限已拥有） */
     setLineup(ids: string[]): void {
       const owned = new Set(this.pets.map((p) => p.id))

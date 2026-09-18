@@ -77,6 +77,7 @@ function starsText(id: string): string {
     <section class="entries">
       <RouterLink to="/dex" class="btn btn-primary">📖 图鉴</RouterLink>
       <RouterLink to="/hatch" class="btn btn-primary">🥚 孵蛋</RouterLink>
+      <RouterLink to="/pinball" class="btn btn-primary">🎰 弹珠屋</RouterLink>
       <RouterLink to="/settings" class="btn btn-ghost">⚙️ 设置</RouterLink>
     </section>
   </main>
