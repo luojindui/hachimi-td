@@ -132,6 +132,36 @@ export const CRIT = {
   CHANCE_CAP: 0.5,
 } as const
 
+/* ---------------- 天赋树 ---------------- */
+
+export type TalentBranch = 'attack' | 'economy' | 'survival'
+
+export interface TalentNode {
+  id: string
+  name: string
+  desc: string
+  branch: TalentBranch
+  tier: 1 | 2 | 3
+  /** 解锁所需累计星数（不消耗星星） */
+  starReq: number
+  /** 购买消耗（猫薄荷） */
+  cost: number
+  effect: { kind: 'attack' | 'gold' | 'baseHp'; value: number }
+}
+
+/** 永久天赋：三系各三级，按累计星数解锁、猫薄荷购买 */
+export const TALENTS: readonly TalentNode[] = [
+  { id: 'atk1', name: '猫爪训练 I', desc: '全体攻击 +3%', branch: 'attack', tier: 1, starReq: 3, cost: 200, effect: { kind: 'attack', value: 0.03 } },
+  { id: 'atk2', name: '猫爪训练 II', desc: '全体攻击 +6%', branch: 'attack', tier: 2, starReq: 9, cost: 500, effect: { kind: 'attack', value: 0.06 } },
+  { id: 'atk3', name: '猫爪训练 III', desc: '全体攻击 +10%', branch: 'attack', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'attack', value: 0.1 } },
+  { id: 'eco1', name: '理财猫 I', desc: '击杀赏金 +5%', branch: 'economy', tier: 1, starReq: 3, cost: 200, effect: { kind: 'gold', value: 0.05 } },
+  { id: 'eco2', name: '理财猫 II', desc: '击杀赏金 +10%', branch: 'economy', tier: 2, starReq: 9, cost: 500, effect: { kind: 'gold', value: 0.1 } },
+  { id: 'eco3', name: '理财猫 III', desc: '击杀赏金 +15%', branch: 'economy', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'gold', value: 0.15 } },
+  { id: 'hp1', name: '粮仓守卫 I', desc: '粮仓上限 +2', branch: 'survival', tier: 1, starReq: 3, cost: 200, effect: { kind: 'baseHp', value: 2 } },
+  { id: 'hp2', name: '粮仓守卫 II', desc: '粮仓上限 +4', branch: 'survival', tier: 2, starReq: 9, cost: 500, effect: { kind: 'baseHp', value: 4 } },
+  { id: 'hp3', name: '粮仓守卫 III', desc: '粮仓上限 +6', branch: 'survival', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'baseHp', value: 6 } },
+]
+
 /* ---------------- 数值锚点（测试用） ---------------- */
 
 /** DPS / 建造成本 的合理区间（伤害型定位），超出说明失衡 */
@@ -160,6 +190,8 @@ export const ENGINE = {
   BOSS_HOWL: { interval: 8, speedBonus: 0.2, duration: 3 },
   /** 攻击间隔下限（秒），防三选一叠加后失控 */
   MIN_ATTACK_INTERVAL: 0.1,
+  /** 精英敌人加成 */
+  ELITE: { HP_MUL: 2.2, SPEED_MUL: 0.9, BOUNTY_MUL: 3 },
   /** 漂浮文字生存时间（秒） */
   FLOAT_TEXT_LIFE: 0.9,
   /** 漂浮文字数量上限 */

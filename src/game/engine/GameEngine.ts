@@ -43,6 +43,10 @@ interface EngineEnemy {
   maxHp: number
   /** 本局实际移速（格/秒）= 基础速度 × 关卡速度乘数 × 波次速度乘数 */
   speed: number
+  /** 精英标记（赏金 ×3） */
+  elite: boolean
+  /** 赏金乘数 */
+  bountyMul: number
   /** 沿路径弧长（格） */
   dist: number
   x: number
@@ -134,6 +138,8 @@ export interface EngineOptions {
   rng?: () => number
   /** 是否启用波次开始的三选一强化（缺省开启；单测可关闭以保持确定性） */
   draftsEnabled?: boolean
+  /** 天赋树永久加成（攻击/赏金比例、粮仓上限加值） */
+  talentBonus?: { attack?: number; gold?: number; baseHp?: number }
 }
 
 /** 三选一强化带来的持久加成（本局有效） */
@@ -175,7 +181,7 @@ export class GameEngine {
   private activeWaveIndex = -1
   /** 当前波已预支的清空奖励（提前召唤所付） */
   private activeWaveAdvance = 0
-  private pendingSpawns: { enemyId: string; at: number }[] = []
+  private pendingSpawns: { enemyId: string; at: number; elite: boolean }[] = []
 
   private baseHp: number
   private baseMaxHp: number
@@ -187,6 +193,7 @@ export class GameEngine {
   private draftOptions: readonly DraftOption[] | null = null
   private readonly draftsEnabled: boolean
   private readonly rng: () => number
+  private readonly talentBaseHp: number
   private enemies: EngineEnemy[] = []
   private towers: (EngineTower | undefined)[] = []
   private projectiles: EngineProjectile[] = []
@@ -211,8 +218,29 @@ export class GameEngine {
     this.waveBreakSeconds = options.waveBreakSeconds ?? ENGINE.WAVE_BREAK_SECONDS
     this.rng = options.rng ?? Math.random
     this.draftsEnabled = options.draftsEnabled ?? true
-    this.baseHp = this.level.baseHp
-    this.baseMaxHp = this.level.baseHp
+    const talent = options.talentBonus
+    this.talentBaseHp = Math.max(
+      0,
+      Math.min(
+        this.level.baseHp,
+        talent?.baseHp !== undefined && Number.isFinite(talent.baseHp)
+          ? Math.floor(talent.baseHp)
+          : 0,
+      ),
+    )
+    this.baseHp = this.level.baseHp + this.talentBaseHp
+    this.baseMaxHp = this.baseHp
+    this.buffs = {
+      ...emptyBuffs(),
+      attack:
+        talent?.attack !== undefined && Number.isFinite(talent.attack)
+          ? talent.attack
+          : 0,
+      gold:
+        talent?.gold !== undefined && Number.isFinite(talent.gold)
+          ? talent.gold
+          : 0,
+    }
     this.gold = this.level.startGold
     this.countdown = this.firstWaveCountdown
     this.towers = this.level.buildSlots.map(() => undefined)
@@ -462,13 +490,14 @@ export class GameEngine {
     if (!this.level.endless && this.waveIndex >= this.level.waves.length) return
 
     const wave = this.getWaveByIndex(this.waveIndex)
-    const spawns: { enemyId: string; at: number }[] = []
+    const spawns: { enemyId: string; at: number; elite: boolean }[] = []
     for (const entry of wave.entries) {
       const delay = entry.delay ?? 0
       for (let i = 0; i < entry.count; i++) {
         spawns.push({
           enemyId: entry.enemyId,
           at: this.now + delay + i * entry.interval,
+          elite: entry.elite ?? false,
         })
       }
     }
@@ -486,18 +515,20 @@ export class GameEngine {
     if (this.phase !== 'active') return
     while (this.pendingSpawns.length > 0 && this.pendingSpawns[0]!.at <= this.now) {
       const spawn = this.pendingSpawns.shift()!
-      this.spawnEnemy(spawn.enemyId)
+      this.spawnEnemy(spawn.enemyId, spawn.elite)
     }
   }
 
-  private spawnEnemy(enemyId: string): void {
+  private spawnEnemy(enemyId: string, elite: boolean): void {
     const def = getEnemy(enemyId)
     const wave = this.activeWave
+    const eliteHpMul = elite ? ENGINE.ELITE.HP_MUL : 1
+    const eliteSpeedMul = elite ? ENGINE.ELITE.SPEED_MUL : 1
     const hp = Math.round(
-      def.hp * this.level.hpMul * (wave?.hpMul ?? 1),
+      def.hp * this.level.hpMul * (wave?.hpMul ?? 1) * eliteHpMul,
     )
     const speed =
-      def.speed * this.level.speedMul * (wave?.speedMul ?? 1)
+      def.speed * this.level.speedMul * (wave?.speedMul ?? 1) * eliteSpeedMul
     // 初始朝向：沿路径第一段方向
     const p0 = this.level.path[0]!
     const p1 = this.level.path[1] ?? p0
@@ -506,6 +537,8 @@ export class GameEngine {
       def,
       hp,
       maxHp: hp,
+      elite,
+      bountyMul: elite ? ENGINE.ELITE.BOUNTY_MUL : 1,
       speed,
       dist: 0,
       x: p0.x,
@@ -774,7 +807,9 @@ export class GameEngine {
 
     // 击杀：爆散 + 金币特效
     this.kills++
-    const goldMul = 1 + this.goldAuraAt(enemy.x, enemy.y) + this.buffs.gold
+    const goldMul =
+      (1 + this.goldAuraAt(enemy.x, enemy.y) + this.buffs.gold) *
+      enemy.bountyMul
     const flat = this.flatBountyBonus()
     const gained = Math.round(enemy.def.bounty * goldMul) + flat
     this.gold += gained
@@ -1028,6 +1063,7 @@ export class GameEngine {
       howled: e.howlUntil > this.now,
       flash: e.flashUntil > this.now,
       facing: e.facing,
+      elite: e.elite,
     }))
     const towers: TowerView[] = this.towers
       .filter((t): t is EngineTower => t !== undefined)

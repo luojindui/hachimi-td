@@ -254,7 +254,7 @@ const LEVEL_LIST: readonly LevelDef[] = [
       },
       {
         entries: [
-          { enemyId: 'crow', count: 3, interval: 1.8 },
+          { enemyId: 'crow', count: 3, interval: 1.8, elite: true },
           { enemyId: 'shield', count: 2, interval: 1.5, delay: 4 },
         ],
         reward: 52,
@@ -329,7 +329,7 @@ const LEVEL_LIST: readonly LevelDef[] = [
       },
       {
         entries: [
-          { enemyId: 'shield', count: 3, interval: 1.4 },
+          { enemyId: 'shield', count: 3, interval: 1.4, elite: true },
           { enemyId: 'swift', count: 4, interval: 0.9, delay: 4 },
         ],
         reward: 54,
@@ -419,7 +419,7 @@ const LEVEL_LIST: readonly LevelDef[] = [
       {
         entries: [
           { enemyId: 'mouse', count: 10, interval: 0.7 },
-          { enemyId: 'crow', count: 4, interval: 1.5, delay: 4 },
+          { enemyId: 'crow', count: 4, interval: 1.5, delay: 4, elite: true },
         ],
         reward: 58,
       },
@@ -497,7 +497,7 @@ const LEVEL_LIST: readonly LevelDef[] = [
       {
         entries: [
           { enemyId: 'crow', count: 4, interval: 1.5 },
-          { enemyId: 'shield', count: 3, interval: 1.3, delay: 4 },
+          { enemyId: 'shield', count: 3, interval: 1.3, delay: 4, elite: true },
         ],
         reward: 58,
       },
@@ -595,7 +595,7 @@ const LEVEL_LIST: readonly LevelDef[] = [
       },
       {
         entries: [
-          { enemyId: 'shield', count: 5, interval: 1.2 },
+          { enemyId: 'shield', count: 5, interval: 1.2, elite: true },
           { enemyId: 'crow', count: 5, interval: 1.4, delay: 4 },
         ],
         reward: 64,
@@ -607,7 +607,7 @@ const LEVEL_LIST: readonly LevelDef[] = [
       {
         entries: [
           { enemyId: 'shield', count: 4, interval: 1.2 },
-          { enemyId: 'swift', count: 6, interval: 0.7, delay: 3 },
+          { enemyId: 'swift', count: 6, interval: 0.7, delay: 3, elite: true },
           { enemyId: 'crow', count: 4, interval: 1.4, delay: 5 },
           { enemyId: 'ratking', count: 1, interval: 1, delay: 10 },
         ],
@@ -667,11 +667,13 @@ export function getEndlessWave(wave: number): WaveDef {
     throw new Error(`无尽波次非法: ${wave}`)
   }
   const interval = Math.max(0.45, 1.2 - wave * 0.03)
+  const elite = wave >= 12
   const entries: WaveDef['entries'] = [
     {
       enemyId: 'mouse',
       count: Math.min(60, 5 + Math.floor(wave * 1.1)),
       interval,
+      elite: elite && wave % 2 === 0,
     },
   ]
   if (wave >= 2) {
@@ -680,6 +682,7 @@ export function getEndlessWave(wave: number): WaveDef {
       count: Math.min(25, Math.floor(wave * 0.8)),
       interval: interval + 0.1,
       delay: 3,
+      elite: elite,
     })
   }
   if (wave >= 3) {
@@ -696,6 +699,7 @@ export function getEndlessWave(wave: number): WaveDef {
       count: Math.min(20, Math.floor(wave * 0.45)),
       interval: interval + 0.3,
       delay: 4,
+      elite: elite,
     })
   }
   if (wave % ENDLESS.RAMP_EVERY === 0) {

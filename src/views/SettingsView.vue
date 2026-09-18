@@ -94,7 +94,7 @@ function doReset(): void {
 
       <!-- 重置二次确认 -->
       <div v-if="confirmReset" class="confirm-mask" @click="confirmReset = false">
-        <div class="confirm card" @click.stop>
+        <div class="confirm card" role="dialog" aria-modal="true" @click.stop>
           <p class="confirm-text">
             确定要重置存档吗？<br />
             <strong>所有宠物、进度与猫薄荷都会清空！</strong>

@@ -78,6 +78,7 @@ function starsText(id: string): string {
       <RouterLink to="/dex" class="btn btn-primary">📖 图鉴</RouterLink>
       <RouterLink to="/hatch" class="btn btn-primary">🥚 孵蛋</RouterLink>
       <RouterLink to="/pinball" class="btn btn-primary">🎰 弹珠屋</RouterLink>
+      <RouterLink to="/talents" class="btn btn-primary">⭐ 天赋</RouterLink>
       <RouterLink to="/settings" class="btn btn-ghost">⚙️ 设置</RouterLink>
     </section>
   </main>
@@ -181,6 +182,7 @@ function starsText(id: string): string {
 
 .entries {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 1rem;
 }

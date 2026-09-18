@@ -21,7 +21,7 @@ const A = assets()
 
 <template>
   <div class="modal-mask">
-    <div class="modal card">
+    <div class="modal card" role="dialog" aria-modal="true" aria-label="战斗结算">
       <h2 :class="['title', props.outcome]">
         {{ props.outcome === 'victory' ? '防守成功！' : '粮仓失守…' }}
       </h2>

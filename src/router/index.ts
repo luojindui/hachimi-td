@@ -26,6 +26,11 @@ const router = createRouter({
       component: () => import('@/views/HatchView.vue'),
     },
     {
+      path: '/talents',
+      name: 'talents',
+      component: () => import('@/views/TalentsView.vue'),
+    },
+    {
       path: '/pinball',
       name: 'pinball',
       component: () => import('@/views/PinballView.vue'),

@@ -25,5 +25,7 @@ export interface SaveDataV1 {
     firstTenDone: boolean
   }
   starMilestones: number[]
+  /** 已购买的天赋节点 id */
+  talents: string[]
   stats: { totalKills: number; battlesWon: number }
 }

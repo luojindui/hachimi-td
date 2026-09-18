@@ -434,6 +434,17 @@ export function renderBattle(
         circle(ctx, cx + Math.cos(a) * (size + 6), cy + Math.sin(a) * (size + 6) * 0.5, 1.8)
       }
     }
+    if (enemy.elite) {
+      ctx.strokeStyle = '#c95fd0'
+      ctx.lineWidth = 2.5
+      ctx.beginPath()
+      ctx.arc(cx, cy, size + 6, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.fillStyle = '#e18ae0'
+      ctx.font = 'bold 11px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('★', cx + size + 8, cy - size - 2)
+    }
     if (enemy.howled) {
       ctx.fillStyle = '#ffd75e'
       emoji(ctx, A.icon('speed'), cx + size + 6, cy - size, 14)

@@ -97,6 +97,7 @@ const battle = useBattleEngine(() => ({
   level,
   lineup: lineupPetDefs(),
   starLevels: starLevels(),
+  talentBonus: profile.talentBonus,
 }))
 
 const snapshot = battle.snapshot

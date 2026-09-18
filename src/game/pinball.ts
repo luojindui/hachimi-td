@@ -48,7 +48,7 @@ export const PINBALL = {
   /** 球心到达此线即判定落入奖励槽 */
   SLOT_Y: 432,
   /** 物理兜底：超时按最近槽位结算 */
-  SETTLE_TIMEOUT: 12,
+  SETTLE_TIMEOUT: 6,
   /** 金钉单次碰撞奖励（猫薄荷） */
   GOLD_PEG_BONUS: 15,
   PEG_ROWS: 6,
@@ -77,37 +77,61 @@ function buildSlots(): PinballSlot[] {
   return slots
 }
 
+/** 以板中心 (180) 为轴的对称钉板；奇数行两侧加护墙钉封死贴墙走廊 */
 function buildPegs(): PinballPeg[] {
   const pegs: PinballPeg[] = []
   const { WALL, WIDTH } = PINBALL
   const span = WIDTH - WALL * 2
+  const centerX = WALL + span / 2
   for (let row = 0; row < PINBALL.PEG_ROWS; row++) {
     const y = 90 + row * 44
-    const count = row % 2 === 0 ? 7 : 6
-    const step = span / (count + 1)
-    for (let i = 0; i < count; i++) {
-      pegs.push({
-        x: WALL + step * (i + 1) + (row % 2 === 0 ? 0 : step / 2),
-        y,
-        r: PINBALL.PEG_R,
-        gold: false,
-      })
+    if (row % 2 === 0) {
+      // 偶数行 7 钉，以中心对称
+      const spacing = span / 7
+      for (let k = 0; k < 7; k++) {
+        pegs.push({
+          x: centerX + (k - 3) * spacing,
+          y,
+          r: PINBALL.PEG_R,
+          gold: false,
+        })
+      }
+    } else {
+      // 奇数行 6 钉（中心对称、半格错位）+ 两侧护墙钉
+      const spacing = span / 6
+      for (let k = 0; k < 6; k++) {
+        pegs.push({
+          x: centerX + (k - 2.5) * spacing,
+          y,
+          r: PINBALL.PEG_R,
+          gold: false,
+        })
+      }
+      pegs.push({ x: WALL + 22, y, r: PINBALL.PEG_R, gold: false })
+      pegs.push({ x: WIDTH - WALL - 22, y, r: PINBALL.PEG_R, gold: false })
     }
   }
-  // 3 颗固定位置的金钉
-  const goldIdx = [5, 16, 30]
-  for (const gi of goldIdx) {
-    if (pegs[gi]) pegs[gi]!.gold = true
-  }
+  // 3 颗金钉：以板中心对称分布（行 2 中心、行 3 两侧）
+  const centerRowStart = 7 // 行 0 的 7 颗
+  const oddRowStart = 7 + 7 // 行 1 的 6 颗 + 2 护墙钉 = 8
+  const row2Start = oddRowStart + 8
+  const row3Start = row2Start + 7
+  // 行 2（偶数行 7 钉）正中
+  if (pegs[centerRowStart + 3]) pegs[centerRowStart + 3]!.gold = true
+  // 行 3（奇数行）两侧对称位置
+  if (pegs[row3Start + 1]) pegs[row3Start + 1]!.gold = true
+  if (pegs[row3Start + 4]) pegs[row3Start + 4]!.gold = true
   return pegs
 }
 
-/** 确定性随机源（mulberry32） */
+/** 真正的 mulberry32 PRNG */
 export function mulberry32(seed: number): () => number {
-  let s = seed >>> 0
+  let a = seed >>> 0
   return () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0
-    return s / 0xffffffff
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
 
@@ -122,11 +146,11 @@ export class PinballMachine {
   elapsed = 0
 
   private launchX = PINBALL.WIDTH / 2
-  private readonly crateSeedRng: () => number
+  private readonly jitterRng: () => number
   private readonly goldHit = new Set<number>()
 
   constructor(seed = Date.now() >>> 0) {
-    this.crateSeedRng = mulberry32(seed)
+    this.jitterRng = mulberry32(seed)
   }
 
   get rolling(): boolean {
@@ -159,7 +183,7 @@ export class PinballMachine {
     this.goldEarned = 0
     this.goldHit.clear()
     this.elapsed = 0
-    const jitter = (this.crateSeedRng() - 0.5) * 60
+    const jitter = (this.jitterRng() - 0.5) * 60
     this.ball = {
       x: this.launchX,
       y: 24,
@@ -168,17 +192,28 @@ export class PinballMachine {
     }
   }
 
-  /** 推进物理（秒）。返回 landed 表示本球已结算 */
+  /** 立即按最近槽位结算（视图卸载等场景兜底） */
+  forceSettle(): void {
+    if (this.ball) {
+      this.resolveNearest(this.ball.x)
+    }
+  }
+
+  /** 推进物理（秒）。返回 landed 表示本球已结算。
+   * 非法/超大 dt 会被钳制，防穿透与 NaN 污染。 */
   step(dt: number): 'rolling' | 'landed' {
     const ball = this.ball
     if (!ball) return 'landed'
-    this.elapsed += dt
+    if (!Number.isFinite(dt) || dt <= 0) return 'rolling'
+    const clamped = Math.min(dt, 1 / 30)
+    this.elapsed += clamped
     if (this.elapsed > PINBALL.SETTLE_TIMEOUT) {
       this.resolveNearest(ball.x)
       return 'landed'
     }
-    const sub = 4
-    const h = dt / sub
+    // 自适应子步：单步位移不超过钉捕获直径的一半
+    const sub = Math.max(4, Math.ceil((clamped * PINBALL.GRAVITY) / 40 / 14))
+    const h = clamped / sub
     for (let i = 0; i < sub; i++) {
       ball.vy += PINBALL.GRAVITY * h
       ball.x += ball.vx * h
@@ -195,8 +230,9 @@ export class PinballMachine {
         ball.vx = -Math.abs(ball.vx) * PINBALL.WALL_REST
       }
 
-      // 钉子碰撞
-      for (const peg of this.pegs) {
+      // 钉子碰撞（按索引去重金钉）
+      for (let pi = 0; pi < this.pegs.length; pi++) {
+        const peg = this.pegs[pi]!
         const dx = ball.x - peg.x
         const dy = ball.y - peg.y
         const distSq = dx * dx + dy * dy
@@ -205,19 +241,25 @@ export class PinballMachine {
           const dist = Math.sqrt(distSq)
           const nx = dx / dist
           const ny = dy / dist
-          // 推出重叠
           ball.x = peg.x + nx * minDist
           ball.y = peg.y + ny * minDist
-          // 沿法线反射
           const vn = ball.vx * nx + ball.vy * ny
           ball.vx -= (1 + PINBALL.PEG_REST) * vn * nx
           ball.vy -= (1 + PINBALL.PEG_REST) * vn * ny
-          // 金钉奖励（每颗每次掉落只结算一次）
-          if (peg.gold && !this.goldHit.has(peg.x)) {
-            this.goldHit.add(peg.x)
+          if (peg.gold && !this.goldHit.has(pi)) {
+            this.goldHit.add(pi)
             this.goldEarned += PINBALL.GOLD_PEG_BONUS
           }
         }
+      }
+
+      // 钉子推出后补一次墙钳制（防瞬时越墙）
+      if (ball.x < minX) {
+        ball.x = minX
+        ball.vx = Math.abs(ball.vx) * PINBALL.WALL_REST
+      } else if (ball.x > maxX) {
+        ball.x = maxX
+        ball.vx = -Math.abs(ball.vx) * PINBALL.WALL_REST
       }
 
       // 落入奖励槽

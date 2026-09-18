@@ -44,8 +44,8 @@ function loop(ts: number): void {
 }
 
 function startRoll(): void {
-  if (!canPlay.value) return
-  profile.addCatnip(-PINBALL.COST)
+  if (rolling.value) return
+  if (!profile.spendCatnip(PINBALL.COST)) return
   rolling.value = true
   rewardBanner.value = null
   machine.setLaunchX(launchX.value)
@@ -146,11 +146,10 @@ function rr(
 }
 
 /* 发射位置选择：在画布顶部区域按下/拖动 */
-const canvasEl = useTemplateRef<HTMLCanvasElement>('canvas')
 let selecting = false
 
 function onSelect(e: PointerEvent): void {
-  const canvas = canvasEl.value
+  const canvas = canvasRef.value
   if (!canvas || rolling.value) return
   const rect = canvas.getBoundingClientRect()
   const scale = PINBALL.WIDTH / rect.width
@@ -178,11 +177,20 @@ onMounted(() => {
   draw() // 初始帧：让玩家进场就能看到钉板与奖励槽
   window.addEventListener('pointermove', onSelectMove)
   window.addEventListener('pointerup', onSelectEnd)
+  window.addEventListener('pointercancel', onSelectEnd)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onSelectMove)
   window.removeEventListener('pointerup', onSelectEnd)
+  window.removeEventListener('pointercancel', onSelectEnd)
   cancelAnimationFrame(rafId)
+  // 卸载兜底：飞行中的球按最近槽位结算，奖励不丢失
+  if (machine.rolling) {
+    machine.forceSettle()
+    if (machine.landedSlot !== null && machine.totalReward) {
+      profile.addCatnip(machine.totalReward)
+    }
+  }
 })
 </script>
 
@@ -205,7 +213,7 @@ onBeforeUnmount(() => {
       </div>
       <div class="controls">
         <button class="btn btn-primary" :disabled="!canPlay" @click="startRoll">
-          🎯 投球（{{ PINBALL.COST }}{{ A.icon('catnip') }}）
+          {{ rolling ? '滚动中…' : `🎯 投球（${PINBALL.COST}${A.icon('catnip')}）` }}
         </button>
       </div>
     </section>
@@ -217,7 +225,7 @@ onBeforeUnmount(() => {
     </section>
 
     <!-- 奖励结算 -->
-    <div v-if="rewardBanner" class="reward-mask" role="dialog" aria-modal="true">
+    <div v-if="rewardBanner" class="reward-mask" role="dialog" aria-modal="true" aria-label="本球奖励">
       <div class="reward card" :class="{ jackpot: rewardBanner.jackpot }">
         <p class="reward-label">{{ rewardBanner.jackpot ? '🌟 大奖！' : '落入奖励槽' }}</p>
         <p class="reward-num">+{{ rewardBanner.total }} {{ A.icon('catnip') }}</p>

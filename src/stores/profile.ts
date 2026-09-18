@@ -9,6 +9,7 @@ import {
   STAR_UP_CATNIP,
   STAR_UP_RARITY_MUL,
   STAR_UP_SHARDS,
+  TALENTS,
 } from '@/game/data/balance'
 import { getPet, findPet, PET_POOL } from '@/game/data/pets'
 import { listLevels } from '@/game/data/levels'
@@ -48,6 +49,7 @@ function freshSave(): SaveDataV1 {
     endless: { bestWave: 0, claimedMilestones: [] },
     gacha: { totalDraws: 0, srPity: 0, ssrPity: 0, firstTenDone: false },
     starMilestones: [],
+    talents: [],
     stats: { totalKills: 0, battlesWon: 0 },
   }
 }
@@ -63,6 +65,7 @@ function emptySave(): SaveDataV1 {
     endless: { bestWave: 0, claimedMilestones: [] },
     gacha: { totalDraws: 0, srPity: 0, ssrPity: 0, firstTenDone: false },
     starMilestones: [],
+    talents: [],
     stats: { totalKills: 0, battlesWon: 0 },
   }
 }
@@ -140,6 +143,12 @@ function hydrate(raw: unknown): SaveDataV1 {
         typeof n === 'number' && Number.isInteger(n) && n > 0,
     )
   }
+  if (Array.isArray(r.talents)) {
+    const valid = new Set(TALENTS.map((t) => t.id))
+    out.talents = r.talents.filter(
+      (id): id is string => typeof id === 'string' && valid.has(id),
+    )
+  }
   if (typeof r.stats === 'object' && r.stats !== null) {
     const s = r.stats as { totalKills?: unknown; battlesWon?: unknown }
     out.stats = {
@@ -206,6 +215,7 @@ interface ProfileShape {
   endless: { bestWave: number; claimedMilestones: number[] }
   gacha: { totalDraws: number; srPity: number; ssrPity: number; firstTenDone: boolean }
   starMilestones: number[]
+  talents: string[]
   stats: { totalKills: number; battlesWon: number }
 }
 
@@ -217,6 +227,7 @@ function applySaveTo(store: ProfileShape, data: SaveDataV1): void {
   store.endless = { ...data.endless }
   store.gacha = { ...data.gacha }
   store.starMilestones = [...data.starMilestones]
+  store.talents = [...data.talents]
   store.stats = { ...data.stats }
 }
 
@@ -297,6 +308,8 @@ export const useProfileStore = defineStore('profile', {
     gacha: { totalDraws: 0, srPity: 0, ssrPity: 0, firstTenDone: false },
     starMilestones: [],
     stats: { totalKills: 0, battlesWon: 0 },
+    /** 已购买的天赋节点 id */
+    talents: [] as string[],
     /** 当前环境是否可持久化（false = 无痕模式，仅内存） */
     persistent: true,
     /** 上次装载是否为损坏恢复（用于 UI 提示） */
@@ -325,6 +338,18 @@ export const useProfileStore = defineStore('profile', {
     },
     ownedPetIds(state): string[] {
       return state.pets.map((p) => p.id)
+    },
+    /** 天赋带来的永久加成（传入战斗引擎） */
+    talentBonus(state): { attack: number; gold: number; baseHp: number } {
+      const bonus = { attack: 0, gold: 0, baseHp: 0 }
+      for (const id of state.talents) {
+        const node = TALENTS.find((t) => t.id === id)
+        if (!node) continue
+        if (node.effect.kind === 'attack') bonus.attack += node.effect.value
+        else if (node.effect.kind === 'gold') bonus.gold += node.effect.value
+        else if (node.effect.kind === 'baseHp') bonus.baseHp += node.effect.value
+      }
+      return bonus
     },
   },
 
@@ -366,6 +391,7 @@ export const useProfileStore = defineStore('profile', {
         endless: this.endless,
         gacha: this.gacha,
         starMilestones: this.starMilestones,
+        talents: this.talents,
         stats: this.stats,
       }
       return JSON.stringify(data)
@@ -377,11 +403,46 @@ export const useProfileStore = defineStore('profile', {
       }
     },
 
-    /** 直接增加猫薄荷（弹珠机等玩法奖励） */
+    /** 直接增加猫薄荷（弹珠机等玩法奖励）；非法/非正数忽略 */
     addCatnip(amount: number): void {
       if (!Number.isFinite(amount) || amount <= 0) return
       this.catnip += Math.floor(amount)
       this.persist()
+    },
+
+    /** 消耗猫薄荷：余额不足返回 false（弹珠机/孵蛋等扣费入口） */
+    spendCatnip(amount: number): boolean {
+      if (!Number.isFinite(amount) || amount <= 0) return false
+      const cost = Math.floor(amount)
+      if (this.catnip < cost) return false
+      this.catnip -= cost
+      this.persist()
+      return true
+    },
+
+    /* ---------------- 天赋树 ---------------- */
+
+    /** 天赋是否可购买（星数门槛 + 前置节点 + 未拥有） */
+    canBuyTalent(nodeId: string): boolean {
+      const node = TALENTS.find((t) => t.id === nodeId)
+      if (!node) return false
+      if (this.talents.includes(nodeId)) return false
+      if (this.totalStars < node.starReq) return false
+      const prereq = TALENTS.find(
+        (t) => t.branch === node.branch && t.tier === node.tier - 1,
+      )
+      if (prereq && !this.talents.includes(prereq.id)) return false
+      return this.catnip >= node.cost
+    },
+
+    /** 购买天赋节点 */
+    buyTalent(nodeId: string): boolean {
+      if (!this.canBuyTalent(nodeId)) return false
+      const node = TALENTS.find((t) => t.id === nodeId)!
+      this.catnip -= node.cost
+      this.talents.push(nodeId)
+      this.persist()
+      return true
     },
 
     /** 编辑出战编队（去重、限 6 只、仅限已拥有） */

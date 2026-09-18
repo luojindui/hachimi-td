@@ -112,6 +112,8 @@ export interface WaveEntry {
   interval: number
   /** 本组在波开始后延迟多少秒出现 */
   delay?: number
+  /** 精英：血量 ×2.2、速度 ×0.9、赏金 ×3 */
+  elite?: boolean
 }
 
 export interface WaveDef {
@@ -182,6 +184,8 @@ export interface EnemyView {
   flash: boolean
   /** 移动朝向（弧度，0 = 向右） */
   facing: number
+  /** 精英标记 */
+  elite: boolean
 }
 
 export type EffectKind = 'poof' | 'hit' | 'coin' | 'howl'
