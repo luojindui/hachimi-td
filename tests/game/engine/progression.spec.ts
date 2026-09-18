@@ -29,6 +29,7 @@ function autoPlay(
     level,
     lineup: lineupSpec.map((s) => getPet(s.id)),
     starLevels: Object.fromEntries(lineupSpec.map((s) => [s.id, s.stars])),
+    draftsEnabled: false, // 门槛回归不含三选一，保持确定性
   })
 
   const placed = new Set<string>()

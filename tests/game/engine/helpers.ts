@@ -1,7 +1,7 @@
 import { GameEngine } from '@/game/engine/GameEngine'
 import type { LevelDef, PetDef, WaveDef } from '@/game/types'
 
-const STEP = 1 / 30
+export const STEP = 1 / 30
 
 export function makePet(overrides: Partial<PetDef> = {}): PetDef {
   return {
@@ -61,10 +61,14 @@ export interface EngineFixture {
   starLevels?: Record<string, number>
   firstWaveCountdown?: number
   waveBreakSeconds?: number
+  /** 随机源注入（三选一/暴击测试用） */
+  rng?: () => number
+  /** 是否启用波次开始的三选一（默认关闭，保持既有测试确定性） */
+  drafts?: boolean
 }
 
 export function makeEngine(fixture: EngineFixture): GameEngine {
-  const { level: levelOverrides, waves, ...rest } = fixture
+  const { level: levelOverrides, waves, rng, drafts, ...rest } = fixture
   const base = makeLevel(levelOverrides)
   const level: LevelDef = waves ? { ...base, waves } : base
   return new GameEngine({
@@ -73,6 +77,8 @@ export function makeEngine(fixture: EngineFixture): GameEngine {
     starLevels: rest.starLevels,
     firstWaveCountdown: rest.firstWaveCountdown ?? 0.5,
     waveBreakSeconds: rest.waveBreakSeconds ?? 2,
+    rng,
+    draftsEnabled: drafts ?? false,
   })
 }
 

@@ -21,6 +21,7 @@ describe('战斗画面渲染（真实引擎 + 真实渲染器）', () => {
     const lineup = ['tianyuan-cat', 'tianyuan-dog', 'lihua', 'xiaobai', 'spotty']
     const engine = new GameEngine({
       level,
+    draftsEnabled: false,
       lineup: lineup.map((id) => getPet(id)),
       firstWaveCountdown: 0.2,
     })
@@ -87,6 +88,7 @@ describe('战斗画面渲染（真实引擎 + 真实渲染器）', () => {
     const sniper = getPet('tianyuan-cat')
     const engine = new GameEngine({
       level,
+    draftsEnabled: false,
       lineup: [sniper],
       firstWaveCountdown: 0.1,
     })

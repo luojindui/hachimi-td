@@ -35,6 +35,7 @@ function simulateLevel1(maxSeconds = 600): GameEngine {
   const level = getLevel('1')
   const engine = new GameEngine({
     level,
+    draftsEnabled: false,
     lineup: BOT_LINEUP.map((id) => getPet(id)),
   })
   const placed = new Set<string>()

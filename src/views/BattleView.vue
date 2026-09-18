@@ -12,6 +12,7 @@ import { useTowerDrag } from '@/composables/useTowerDrag'
 import { assets } from '@/render/registry'
 import BattleCanvas from '@/components/battle/BattleCanvas.vue'
 import BattleHud from '@/components/battle/BattleHud.vue'
+import DraftModal from '@/components/battle/DraftModal.vue'
 import LineupPicker from '@/components/battle/LineupPicker.vue'
 import ResultModal from '@/components/battle/ResultModal.vue'
 import TowerMenu from '@/components/battle/TowerMenu.vue'
@@ -157,6 +158,13 @@ function onSlotClick(slotIndex: number | null): void {
   selectedSlot.value = slotIndex
 }
 
+/** 点击宝箱：开启并获得小鱼干 */
+function onCrateClick(cell: { x: number; y: number } | null): void {
+  if (!cell || !engine.value) return
+  const id = engine.value.crateAt(cell.x, cell.y)
+  if (id !== null) engine.value.openCrate(id)
+}
+
 function placePet(petId: string): void {
   const e = engine.value
   if (!e || selectedSlot.value === null) return
@@ -199,6 +207,15 @@ function callNext(): void {
     engine.value?.callNextWave()
   } catch {
     /* 忽略 */
+  }
+}
+
+/** 三选一：选择一项强化 */
+function pickDraftOption(index: number): void {
+  try {
+    engine.value?.pickDraft(index)
+  } catch (err) {
+    console.warn('[draft] 选择失败', err)
   }
 }
 
@@ -248,6 +265,14 @@ const settlement = ref<{
   kills: number
   waveReached?: number
 } | null>(null)
+
+/** 任一模态弹层打开时，战斗主体转为 inert（阻断键盘穿透） */
+const anyModalOpen = computed(
+  () =>
+    snapshot.value?.draft != null ||
+    settlement.value !== null ||
+    confirmExit.value,
+)
 
 watch(
   () => snapshot.value?.outcome,
@@ -306,6 +331,7 @@ function goHome(): void {
     </section>
 
     <template v-else-if="snapshot">
+      <div class="battle-body" :inert="anyModalOpen || undefined">
       <BattleHud
         :level-name="level.name"
         :snapshot="snapshot"
@@ -321,6 +347,7 @@ function goHome(): void {
         :snapshot="snapshot"
         :highlight="dragHighlight"
         @slot-click="onSlotClick"
+        @crate-click="onCrateClick"
       />
       <TowerMenu
         :lineup="lineupDefs"
@@ -349,6 +376,15 @@ function goHome(): void {
           {{ dragGhostVisual.emoji }}
         </span>
       </div>
+
+      </div>
+
+      <!-- 三选一强化（战斗暂停） -->
+      <DraftModal
+        v-if="snapshot.draft"
+        :draft="snapshot.draft"
+        @pick="pickDraftOption"
+      />
 
       <!-- 退出确认 -->
       <div v-if="confirmExit" class="confirm-mask" @click="confirmExit = false">
@@ -427,10 +463,104 @@ function goHome(): void {
   line-height: 1.6;
 }
 
+.battle-body {
+  display: contents;
+}
+
 .confirm-actions {
   display: flex;
   justify-content: center;
   gap: 0.6rem;
+}
+
+/* 三选一强化 */
+.draft-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(58, 44, 90, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 55;
+  padding: 1rem;
+}
+
+.draft {
+  width: min(34rem, 100%);
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  border: 2px solid var(--c-rarity-sr);
+}
+
+.draft-title {
+  margin: 0;
+  text-align: center;
+  font-size: 1.2rem;
+  color: var(--c-rarity-sr);
+}
+
+.draft-tip {
+  margin: 0;
+  text-align: center;
+  color: var(--c-ink-soft);
+  font-size: 0.85rem;
+}
+
+.draft-cards {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.draft-option {
+  flex: 1 1 8rem;
+  max-width: 10rem;
+  min-height: 6.4rem;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--c-rarity-sr);
+  background: linear-gradient(180deg, #f6efff, #fffdf8);
+  padding: 0.7rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  animation: draft-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transition: transform 0.1s ease;
+}
+
+.draft-option:hover {
+  transform: translateY(-3px);
+}
+
+.draft-option:active {
+  transform: scale(0.96);
+}
+
+@keyframes draft-pop {
+  from {
+    transform: translateY(14px) scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.draft-opt-name {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--c-primary-deep);
+}
+
+.draft-opt-desc {
+  font-size: 0.8rem;
+  color: var(--c-ink);
+  text-align: center;
 }
 
 /* 拖拽跟随的悬浮宠物 */

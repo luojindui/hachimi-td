@@ -89,6 +89,49 @@ export const ENDLESS = {
 
 export const LINEUP_SIZE = 6
 
+/* ---------------- 肉鸽三选一 ---------------- */
+
+export type DraftKind =
+  | 'attack'
+  | 'interval'
+  | 'range'
+  | 'gold'
+  | 'splash'
+  | 'crit'
+  | 'fortify'
+  | 'instantGold'
+
+export interface DraftDef {
+  id: string
+  name: string
+  desc: string
+  kind: DraftKind
+  value: number
+}
+
+/** 波次清空后的三选一强化池（随机抽 3 个不重复） */
+export const DRAFT_POOL: readonly DraftDef[] = [
+  { id: 'attackPlus', name: '猫爪磨亮', desc: '全体攻击 +20%', kind: 'attack', value: 0.2 },
+  { id: 'rapidFire', name: '闪电反射', desc: '全体攻速 +18%', kind: 'interval', value: 0.8475 },
+  { id: 'longRange', name: '千里眼', desc: '全体射程 +15%', kind: 'range', value: 0.15 },
+  { id: 'bountyHunter', name: '赏金猎人', desc: '击杀赏金 +25%', kind: 'gold', value: 0.25 },
+  { id: 'bigSplash', name: '范围扩张', desc: '溅射宠物的溅射半径 +0.6 格', kind: 'splash', value: 0.6 },
+  { id: 'critEdge', name: '会心一击', desc: '12% 概率造成 2 倍伤害', kind: 'crit', value: 0.12 },
+  { id: 'fortify', name: '粮仓加固', desc: '粮仓上限 +5 并立即修复 5', kind: 'fortify', value: 5 },
+  { id: 'economy', name: '战前集资', desc: '立即获得 150 小鱼干', kind: 'instantGold', value: 150 },
+]
+
+/** 每次三选一给出的选项数 */
+export const DRAFT_COUNT = 3
+
+/** 会心一击（三选一强化）参数 */
+export const CRIT = {
+  /** 伤害倍率 */
+  DAMAGE: 2,
+  /** 概率上限（可叠加抽取，不超过此值） */
+  CHANCE_CAP: 0.5,
+} as const
+
 /* ---------------- 数值锚点（测试用） ---------------- */
 
 /** DPS / 建造成本 的合理区间（伤害型定位），超出说明失衡 */
@@ -113,8 +156,10 @@ export const ENGINE = {
   PROJECTILE_SPEED: 9,
   /** 弹道命中判定距离（格） */
   PROJECTILE_HIT_DIST: 0.2,
-  /** 鼠王嚎叫 */
+  /** Boss 嚎叫 */
   BOSS_HOWL: { interval: 8, speedBonus: 0.2, duration: 3 },
+  /** 攻击间隔下限（秒），防三选一叠加后失控 */
+  MIN_ATTACK_INTERVAL: 0.1,
   /** 漂浮文字生存时间（秒） */
   FLOAT_TEXT_LIFE: 0.9,
   /** 漂浮文字数量上限 */

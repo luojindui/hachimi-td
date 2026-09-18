@@ -14,6 +14,7 @@ describe('BattleCanvas', () => {
     const level = getLevel('1')
     const engine = new GameEngine({
       level,
+    draftsEnabled: false,
       lineup: [getPet('tianyuan-cat'), getPet('tianyuan-dog')],
     })
     engine.placeTower(0, 'tianyuan-cat')
@@ -49,7 +50,7 @@ describe('TowerMenu', () => {
     setActivePinia(createPinia())
     const level = getLevel('1')
     const lineup = [getPet('tianyuan-cat'), getPet('tianyuan-dog')]
-    const engine = new GameEngine({ level, lineup })
+    const engine = new GameEngine({ level, lineup, draftsEnabled: false })
     const snapshot = engine.getSnapshot()
 
     const wrapper = mount(TowerMenu, {
@@ -76,7 +77,7 @@ describe('TowerMenu', () => {
     const level = getLevel('1')
     // 田园猫上场后不可重复放置；哈基米 320 > 220 买不起
     const lineup = [getPet('tianyuan-cat'), getPet('hachimi')]
-    const engine = new GameEngine({ level, lineup })
+    const engine = new GameEngine({ level, lineup, draftsEnabled: false })
     engine.placeTower(0, 'tianyuan-cat')
     const snapshot = engine.getSnapshot()
 
@@ -102,7 +103,7 @@ describe('TowerMenu', () => {
     setActivePinia(createPinia())
     const level = getLevel('1')
     const lineup = [getPet('tianyuan-cat'), getPet('tianyuan-dog')]
-    const engine = new GameEngine({ level, lineup })
+    const engine = new GameEngine({ level, lineup, draftsEnabled: false })
     const snapshot = engine.getSnapshot()
 
     const wrapper = mount(TowerMenu, {
@@ -130,7 +131,7 @@ describe('TowerMenu', () => {
     setActivePinia(createPinia())
     const level = getLevel('1')
     const lineup = [getPet('tianyuan-cat')]
-    const engine = new GameEngine({ level, lineup })
+    const engine = new GameEngine({ level, lineup, draftsEnabled: false })
     engine.placeTower(0, 'tianyuan-cat')
     const snapshot = engine.getSnapshot()
 
@@ -158,7 +159,7 @@ describe('TowerMenu', () => {
     setActivePinia(createPinia())
     const level = getLevel('1')
     const lineup = [getPet('hachimi')] // SSR 320 > 开局 220
-    const engine = new GameEngine({ level, lineup })
+    const engine = new GameEngine({ level, lineup, draftsEnabled: false })
     const wrapper = mount(TowerMenu, {
       props: {
         lineup,

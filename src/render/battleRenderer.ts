@@ -296,6 +296,29 @@ export function renderBattle(
     }
   }
 
+  /* ---- 地图宝箱（未开启） ---- */
+  for (const crate of snapshot.crates) {
+    if (crate.opened) continue
+    const cx = crate.x * CELL_SIZE + CELL_SIZE / 2
+    const cy = crate.y * CELL_SIZE + CELL_SIZE / 2
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'
+    ell(ctx, cx, cy + 16, 18, 6)
+    ctx.fillStyle = '#b98a4e'
+    roundedRect(ctx, cx - 17, cy - 14, 34, 28, 5)
+    ctx.fill()
+    ctx.fillStyle = '#96703a'
+    ctx.fillRect(cx - 17, cy - 4, 34, 6)
+    ctx.strokeStyle = '#7a5a2c'
+    ctx.lineWidth = 2.2
+    roundedRect(ctx, cx - 17, cy - 14, 34, 28, 5)
+    ctx.stroke()
+    ctx.fillStyle = '#ffe9a8'
+    ctx.font = 'bold 15px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('?', cx, cy + 1)
+  }
+
   /* ---- 鼠洞与粮仓 ---- */
   const spawnCell = level.path[0]!
   emoji(

@@ -42,12 +42,15 @@ function waveText(snap: BattleSnapshot): string {
       <span class="stat">{{ icon('fish') }} {{ props.snapshot.gold }}</span>
       <span class="stat kills">击杀 {{ props.snapshot.kills }}</span>
       <button
-        v-if="!props.snapshot.waveInProgress && props.snapshot.outcome === 'ongoing'"
+        v-if="
+          !props.snapshot.waveInProgress && props.snapshot.outcome === 'ongoing'
+        "
         class="call-next"
         @click="emit('callNext')"
       >
         召唤下一波（{{ Math.ceil(props.snapshot.nextWaveCountdown) }}s）
       </button>
+      <span v-else-if="props.snapshot.draft" class="wave-live">选择强化中…</span>
       <span v-else-if="props.snapshot.outcome === 'ongoing'" class="wave-live">战斗中…</span>
     </div>
   </header>

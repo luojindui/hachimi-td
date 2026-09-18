@@ -20,6 +20,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   slotClick: [slotIndex: number | null]
+  crateClick: [cell: { x: number; y: number } | null]
 }>()
 
 const canvasRef = useTemplateRef<HTMLCanvasElement>('canvas')
@@ -57,6 +58,15 @@ function handleClick(event: MouseEvent): void {
   const cell = cellFromPoint(props.level, cssX, cssY, rect.width)
   if (!cell) {
     emit('slotClick', null)
+    emit('crateClick', null)
+    return
+  }
+  // 宝箱优先（宝箱格与建造格互斥）
+  const hasCrate = props.snapshot?.crates.some(
+    (c) => !c.opened && c.x === cell.x && c.y === cell.y,
+  )
+  if (hasCrate) {
+    emit('crateClick', { x: cell.x, y: cell.y })
     return
   }
   emit('slotClick', slotIndexAt(props.level, cell.x, cell.y))

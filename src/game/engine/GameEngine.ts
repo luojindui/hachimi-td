@@ -1,5 +1,8 @@
 import {
   ARMOR_K,
+  CRIT,
+  DRAFT_COUNT,
+  DRAFT_POOL,
   ENGINE,
   LINEUP_SIZE,
   SELL_REFUND_RATIO,
@@ -9,12 +12,15 @@ import {
   UPGRADE_COST_FACTOR_LV2,
   UPGRADE_COST_FACTOR_LV3,
 } from '../data/balance'
+import type { DraftDef } from '../data/balance'
 import { getEnemy } from '../data/enemies'
 import { getEndlessWave } from '../data/levels'
-import { pointAtDistance, totalPathLength } from '../path'
+import { cellKey, expandPathCells, pointAtDistance, totalPathLength } from '../path'
 import type {
   BattleOutcome,
   BattleSnapshot,
+  CrateView,
+  DraftOption,
   EffectView,
   EnemyDef,
   EnemyView,
@@ -80,6 +86,13 @@ interface EngineEffect {
   life: number
 }
 
+interface EngineCrate {
+  id: number
+  x: number
+  y: number
+  opened: boolean
+}
+
 interface EngineProjectile {
   uid: number
   petId: string
@@ -117,6 +130,24 @@ export interface EngineOptions {
   firstWaveCountdown?: number
   /** 波间倒计时（秒），缺省取引擎常量 */
   waveBreakSeconds?: number
+  /** 随机源（三选一抽取/暴击判定），缺省 Math.random；测试注入 */
+  rng?: () => number
+  /** 是否启用波次开始的三选一强化（缺省开启；单测可关闭以保持确定性） */
+  draftsEnabled?: boolean
+}
+
+/** 三选一强化带来的持久加成（本局有效） */
+interface DraftBuffs {
+  attack: number
+  intervalMul: number
+  rangeMul: number
+  gold: number
+  splashBonus: number
+  crit: number
+}
+
+function emptyBuffs(): DraftBuffs {
+  return { attack: 0, intervalMul: 1, rangeMul: 0, gold: 0, splashBonus: 0, crit: 0 }
 }
 
 function clampStars(stars: number | undefined): number {
@@ -147,15 +178,21 @@ export class GameEngine {
   private pendingSpawns: { enemyId: string; at: number }[] = []
 
   private baseHp: number
+  private baseMaxHp: number
   private gold = 0
   private kills = 0
   private leaks = 0
 
+  private buffs: DraftBuffs = emptyBuffs()
+  private draftOptions: readonly DraftOption[] | null = null
+  private readonly draftsEnabled: boolean
+  private readonly rng: () => number
   private enemies: EngineEnemy[] = []
   private towers: (EngineTower | undefined)[] = []
   private projectiles: EngineProjectile[] = []
   private floats: EngineFloatText[] = []
   private effects: EngineEffect[] = []
+  private crates: EngineCrate[] = []
 
   private nextEnemyUid = 1
   private nextProjUid = 1
@@ -172,10 +209,14 @@ export class GameEngine {
     this.firstWaveCountdown =
       options.firstWaveCountdown ?? ENGINE.FIRST_WAVE_COUNTDOWN
     this.waveBreakSeconds = options.waveBreakSeconds ?? ENGINE.WAVE_BREAK_SECONDS
+    this.rng = options.rng ?? Math.random
+    this.draftsEnabled = options.draftsEnabled ?? true
     this.baseHp = this.level.baseHp
+    this.baseMaxHp = this.level.baseHp
     this.gold = this.level.startGold
     this.countdown = this.firstWaveCountdown
     this.towers = this.level.buildSlots.map(() => undefined)
+    this.crates = this.generateCrates()
 
     /* ---- 入参校验：数据问题在构造期暴露 ---- */
     const ids = new Set(this.lineup.map((p) => p.id))
@@ -322,11 +363,12 @@ export class GameEngine {
 
   /* ---------------- 波次控制 ---------------- */
 
-  /** 是否处于波间倒计时（可提前召唤） */
+  /** 是否处于波间倒计时（可提前召唤）；三选一待选时不可 */
   canCallNextWave(): boolean {
     return (
       this.phase === 'countdown' &&
       this.outcome === 'ongoing' &&
+      !this.draftOptions &&
       (this.level.endless || this.waveIndex < this.level.waves.length)
     )
   }
@@ -365,6 +407,7 @@ export class GameEngine {
    */
   update(dtRealSeconds: number): void {
     if (this.phase === 'gameover') return
+    if (this.draftOptions) return // 三选一待选：冻结战场
     if (!Number.isFinite(dtRealSeconds) || dtRealSeconds <= 0) return
     const dt = Math.min(dtRealSeconds, ENGINE.MAX_FRAME_DT)
     this.acc += dt * this.speedMultiplier
@@ -373,6 +416,11 @@ export class GameEngine {
       this.acc -= ENGINE.LOGIC_STEP
       guard++
       this.stepLogic(ENGINE.LOGIC_STEP)
+      // 批内冻结：三选一出现后不得继续消耗剩余逻辑步
+      if (this.draftOptions) {
+        this.acc = 0
+        break
+      }
       // stepLogic 会改写 phase（经 outcome 判断避免 TS 属性收窄误报）
       if (this.outcome !== 'ongoing') {
         this.acc = 0
@@ -430,6 +478,8 @@ export class GameEngine {
     this.activeWaveIndex = this.waveIndex
     this.activeWaveAdvance = 0
     this.phase = 'active'
+    // 波次开始时给出三选一（冻结战场直到选择）
+    if (this.draftsEnabled) this.offerDraft()
   }
 
   private spawnDue(): void {
@@ -546,22 +596,38 @@ export class GameEngine {
     )
   }
 
-  /** 计算塔在当前光环/星级/等级下的实际战斗属性 */
+  /** 计算塔在当前光环/星级/等级/三选一强化下的实际战斗属性 */
   private computeTowerStats(tower: EngineTower): {
     attack: number
     interval: number
     range: number
+    splash: number
   } {
     const lv = this.towerLevelConfig(tower.level)
     const attackSpeedMul = 1 + this.bestAuraValue(tower, 'attackSpeed')
-    const interval =
-      (tower.def.attackInterval * lv.intervalMul) / attackSpeedMul
+    const interval = Math.max(
+      ENGINE.MIN_ATTACK_INTERVAL,
+      (tower.def.attackInterval * lv.intervalMul * this.buffs.intervalMul) /
+        attackSpeedMul,
+    )
     const attack =
       tower.def.attack *
       lv.attackMul *
       this.starMul(tower.def.id) *
-      (1 + this.bestAuraValue(tower, 'globalAttack'))
-    return { attack, interval, range: tower.def.range + lv.rangeBonus }
+      (1 + this.bestAuraValue(tower, 'globalAttack')) *
+      (1 + this.buffs.attack)
+    const range =
+      (tower.def.range + lv.rangeBonus) * (1 + this.buffs.rangeMul)
+    return {
+      attack,
+      interval,
+      range,
+      // 范围扩张只对已有溅射的宠物扩张（不给单体凭空加 AoE）
+      splash:
+        (tower.def.splash ?? 0) > 0
+          ? (tower.def.splash ?? 0) + this.buffs.splashBonus
+          : 0,
+    }
   }
 
   /** 对外查询塔的实际属性（UI 展示 / 测试断言） */
@@ -569,6 +635,7 @@ export class GameEngine {
     attack: number
     interval: number
     range: number
+    splash: number
     level: 1 | 2 | 3
   } | null {
     const tower = this.towers[slotIndex]
@@ -596,7 +663,7 @@ export class GameEngine {
         lastX: target.x,
         lastY: target.y,
         damage: stats.attack,
-        splash: tower.def.splash ?? 0,
+        splash: stats.splash,
         slow: tower.def.slow,
       })
       tower.cooldown = stats.interval
@@ -610,8 +677,7 @@ export class GameEngine {
   }
 
   private acquireTarget(tower: EngineTower): EngineEnemy | null {
-    const lv = this.towerLevelConfig(tower.level)
-    const range = tower.def.range + lv.rangeBonus
+    const range = this.computeTowerStats(tower).range
     let best: EngineEnemy | null = null
     for (const enemy of this.enemies) {
       if (!this.canHit(tower.def.targets, enemy.def.flying)) continue
@@ -696,14 +762,19 @@ export class GameEngine {
     if (enemy.hp <= 0) return
     // 防御：非法伤害值（NaN/负数）直接忽略，防止污染经济与生死判定
     if (!Number.isFinite(rawDamage) || rawDamage < 0) return
-    const effective = rawDamage * (ARMOR_K / (ARMOR_K + enemy.def.armor))
+    // 会心一击强化：概率触发暴击（倍率见 balance.CRIT.DAMAGE）
+    let damage = rawDamage
+    if (this.buffs.crit > 0 && this.rng() < this.buffs.crit) {
+      damage *= CRIT.DAMAGE
+    }
+    const effective = damage * (ARMOR_K / (ARMOR_K + enemy.def.armor))
     enemy.hp -= effective
     enemy.flashUntil = this.now + 0.12
     if (enemy.hp > 0) return
 
     // 击杀：爆散 + 金币特效
     this.kills++
-    const goldMul = 1 + this.goldAuraAt(enemy.x, enemy.y)
+    const goldMul = 1 + this.goldAuraAt(enemy.x, enemy.y) + this.buffs.gold
     const flat = this.flatBountyBonus()
     const gained = Math.round(enemy.def.bounty * goldMul) + flat
     this.gold += gained
@@ -802,9 +873,143 @@ export class GameEngine {
     this.countdown = this.waveBreakSeconds
   }
 
+  /* ---------------- 地图宝箱 ---------------- */
+
+  /** 按关卡 id 确定性生成 2~3 个宝箱（位置稳定，重开一局在同一位置） */
+  private generateCrates(): EngineCrate[] {
+    const { cols, rows } = this.level.grid
+    const pathCells = expandPathCells(this.level.path)
+    const blocked = new Set([
+      ...pathCells,
+      ...this.level.buildSlots.map((s) => cellKey(s.x, s.y)),
+    ])
+    // 字符串哈希作种子
+    let seed = 2166136261
+    for (const ch of this.level.id) {
+      seed = (seed ^ ch.charCodeAt(0)) >>> 0
+      seed = Math.imul(seed, 16777619) >>> 0
+    }
+    const rand = (): number => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0
+      return seed / 0xffffffff
+    }
+    const crates: EngineCrate[] = []
+    const used = new Set<string>()
+    const target = 2 + Math.floor(rand() * 2) // 2~3 个
+    let guard = 0
+    while (crates.length < target && guard < 200) {
+      guard++
+      const x = Math.floor(rand() * cols)
+      const y = Math.floor(rand() * rows)
+      const key = cellKey(x, y)
+      if (blocked.has(key) || used.has(key)) continue
+      used.add(key)
+      crates.push({ id: crates.length + 1, x, y, opened: false })
+    }
+    return crates
+  }
+
+  /** 是否存在可开启的宝箱（指定格） */
+  crateAt(x: number, y: number): number | null {
+    const crate = this.crates.find((c) => !c.opened && c.x === x && c.y === y)
+    return crate ? crate.id : null
+  }
+
+  /** 开宝箱：获得小鱼干（40~80，10% 概率翻倍） */
+  openCrate(crateId: number): { gold: number } | null {
+    this.ensureEditable()
+    const crate = this.crates.find((c) => c.id === crateId)
+    if (!crate || crate.opened) return null
+    crate.opened = true
+    let gold = 40 + Math.floor(this.rng() * 41)
+    if (this.rng() < 0.1) gold *= 2
+    this.gold += gold
+    this.addFloat(`+${gold}`, crate.x, crate.y - 0.3, 'gold')
+    this.addEffect('coin', crate.x, crate.y)
+    return { gold }
+  }
+
+  /* ---------------- 肉鸽三选一 ---------------- */
+
+  /** 当前待选的完整强化定义（含 kind/value），投影为 draftOptions 展示 */
+  private draftPool: readonly DraftDef[] | null = null
+
+  /** 波次清空后随机抽 3 个不重复强化供选择；选择前战斗冻结 */
+  private offerDraft(): void {
+    const pool = [...DRAFT_POOL]
+    const picks: DraftDef[] = []
+    for (let i = 0; i < DRAFT_COUNT && pool.length > 0; i++) {
+      const idx = Math.floor(this.rng() * pool.length)
+      picks.push(pool.splice(idx, 1)[0]!)
+    }
+    this.draftPool = picks
+    this.draftOptions = picks.map((p) => ({
+      id: p.id,
+      name: p.name,
+      desc: p.desc,
+    }))
+  }
+
+  /** 是否有等待选择的三选一 */
+  hasPendingDraft(): boolean {
+    return this.draftOptions !== null
+  }
+
+  /** 选择一个强化并立即生效，战斗恢复 */
+  pickDraft(index: number): void {
+    if (this.outcome !== 'ongoing') throw new Error('战斗已结束')
+    if (!this.draftPool) throw new Error('当前没有待选的三选一')
+    const opt = this.draftPool[index]
+    if (!opt) throw new Error('选项不存在')
+    this.applyDraft(opt)
+    this.draftPool = null
+    this.draftOptions = null
+  }
+
+  private applyDraft(opt: DraftDef): void {
+    switch (opt.kind) {
+      case 'attack':
+        this.buffs.attack += opt.value
+        break
+      case 'interval':
+        this.buffs.intervalMul *= opt.value
+        break
+      case 'range':
+        this.buffs.rangeMul += opt.value
+        break
+      case 'gold':
+        this.buffs.gold += opt.value
+        break
+      case 'splash':
+        this.buffs.splashBonus += opt.value
+        break
+      case 'crit':
+        this.buffs.crit = Math.min(
+          CRIT.CHANCE_CAP,
+          this.buffs.crit + opt.value,
+        )
+        break
+      case 'fortify':
+        this.baseMaxHp += opt.value
+        this.baseHp = Math.min(this.baseMaxHp, this.baseHp + opt.value)
+        break
+      case 'instantGold':
+        this.gold += opt.value
+        break
+      default: {
+        // 穷举守卫：新增 DraftKind 时漏写 case 会在编译期报错
+        const _exhaustive: never = opt.kind
+        return _exhaustive
+      }
+    }
+  }
+
   private endBattle(outcome: Extract<BattleOutcome, 'victory' | 'defeat'>): void {
     this.phase = 'gameover'
     this.outcome = outcome
+    // 清理待选状态，防止结算画面下遮罩常驻
+    this.draftPool = null
+    this.draftOptions = null
   }
 
   /* ---------------- 快照（渲染消费） ---------------- */
@@ -862,11 +1067,17 @@ export class GameEngine {
       kind: e.kind,
       progress: Math.max(0, Math.min(1, (this.now - e.born) / e.life)),
     }))
+    const crates: CrateView[] = this.crates.map((c) => ({
+      id: c.id,
+      x: c.x,
+      y: c.y,
+      opened: c.opened,
+    }))
 
     return {
       outcome: this.outcome,
       baseHp: Math.max(0, this.baseHp),
-      baseMaxHp: this.level.baseHp,
+      baseMaxHp: this.baseMaxHp,
       gold: this.gold,
       waveIndex: this.getCurrentWaveIndex(),
       waveTotal: this.getWaveTotal(),
@@ -880,6 +1091,8 @@ export class GameEngine {
       projectiles,
       floatTexts,
       effects,
+      crates,
+      draft: this.draftOptions ? [...this.draftOptions] : null,
       kills: this.kills,
     }
   }

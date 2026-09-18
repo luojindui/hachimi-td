@@ -186,6 +186,21 @@ export interface EnemyView {
 
 export type EffectKind = 'poof' | 'hit' | 'coin' | 'howl'
 
+/** 地图互动宝箱 */
+export interface CrateView {
+  id: number
+  x: number
+  y: number
+  opened: boolean
+}
+
+/** 肉鸽三选一的候选项（波次清空后出现） */
+export interface DraftOption {
+  id: string
+  name: string
+  desc: string
+}
+
 export interface EffectView {
   id: number
   x: number
@@ -237,5 +252,9 @@ export interface BattleSnapshot {
   floatTexts: readonly FloatTextView[]
   /** 粒子特效（死亡爆散/命中/金币/嚎叫冲击波） */
   effects: readonly EffectView[]
+  /** 待选择的三选一强化（非 null 时战斗暂停） */
+  draft: readonly DraftOption[] | null
+  /** 地图宝箱（未开的可点击） */
+  crates: readonly CrateView[]
   kills: number
 }

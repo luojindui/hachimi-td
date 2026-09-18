@@ -27,7 +27,10 @@ export function useBattleEngine(createOptions: () => EngineOptions) {
     lastTs = ts
 
     e.update(dt)
-    snapshot.value = e.getSnapshot()
+    // 三选一待选期间战场冻结，跳过快照全量重建（内容零变化）
+    if (!e.hasPendingDraft() || snapshot.value?.draft === null) {
+      snapshot.value = e.getSnapshot()
+    }
 
     if (e.getOutcome() === 'ongoing') {
       rafId = requestAnimationFrame(frame)
