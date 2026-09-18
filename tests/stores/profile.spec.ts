@@ -204,6 +204,32 @@ describe('导出导入与重置', () => {
     expect(store.catnip).toBe(10)
   })
 
+  it('addCatnip 正数累加，非法输入忽略', () => {
+    const store = useProfileStore()
+    store.init()
+    store.addCatnip(500)
+    expect(store.catnip).toBe(500 + 1200)
+    store.addCatnip(-5)
+    store.addCatnip(Number.NaN)
+    expect(store.catnip).toBe(500 + 1200)
+  })
+
+  it('spendCatnip 余额不足返回 false', () => {
+    const store = useProfileStore()
+    store.init()
+    store.catnip = 50
+    expect(store.spendCatnip(100)).toBe(false)
+    expect(store.catnip).toBe(50)
+  })
+
+  it('spendCatnip 成功扣减', () => {
+    const store = useProfileStore()
+    store.init()
+    store.catnip = 200
+    expect(store.spendCatnip(80)).toBe(true)
+    expect(store.catnip).toBe(120)
+  })
+
   it('重置存档回到新档', () => {
     const store = useProfileStore()
     store.init()

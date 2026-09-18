@@ -207,16 +207,12 @@ export interface RenderHighlight {
 }
 
 /**
- * 把一帧战斗快照画到画布上（逻辑像素坐标，调用方负责 dpr 缩放）。
- * 纯函数式：只读快照与关卡定义，无内部状态。
- * animTime：驱动循环动画的秒数（调用方传引擎时钟或性能时钟）。
+ * 静态层：场地/路径/鼠洞/粮仓/主题装饰。
+ * 每个关卡只需渲染一次（调用方缓存画布）。
  */
-export function renderBattle(
+export function renderStaticLayer(
   ctx: CanvasRenderingContext2D,
-  snapshot: BattleSnapshot,
   level: LevelDef,
-  highlight?: RenderHighlight | null,
-  animTime = 0,
 ): void {
   const A = assets()
   const tiles = A.tiles(level.theme)
@@ -245,6 +241,22 @@ export function renderBattle(
     )
     ctx.fill()
   }
+
+}
+
+/**
+ * 动态层：建造格/宝箱/塔/敌人/弹道/特效/漂浮文字。
+ * 每帧调用；不负责清屏（由静态层垫底）。
+ */
+export function renderDynamic(
+  ctx: CanvasRenderingContext2D,
+  snapshot: BattleSnapshot,
+  level: LevelDef,
+  highlight?: RenderHighlight | null,
+  animTime = 0,
+): void {
+  const A = assets()
+  const tiles = A.tiles(level.theme)
 
   /* ---- 建造格 ---- */
   const occupied = new Set(snapshot.towers.map((t) => t.slotIndex))
@@ -568,4 +580,19 @@ export function slotIndexAt(level: LevelDef, x: number, y: number): number | nul
   const key = cellKey(x, y)
   const index = level.buildSlots.findIndex((s) => cellKey(s.x, s.y) === key)
   return index >= 0 ? index : null
+}
+
+
+/**
+ * 便捷组合：静态层 + 动态层一帧画完（一次性渲染场景用）。
+ */
+export function renderBattle(
+  ctx: CanvasRenderingContext2D,
+  snapshot: BattleSnapshot,
+  level: LevelDef,
+  highlight?: RenderHighlight | null,
+  animTime = 0,
+): void {
+  renderStaticLayer(ctx, level)
+  renderDynamic(ctx, snapshot, level, highlight, animTime)
 }
