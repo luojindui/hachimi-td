@@ -35,10 +35,10 @@ describe('建造 / 升级 / 出售 经济', () => {
     const engine = makeEngine({ lineup: [cat] })
     engine.placeTower(0, cat.id)
     expect(engine.upgradeCost(0)).toBe(Math.round(80 * 0.8)) // 64
-    engine.upgradeTower(0)
+    engine.upgradeTower(0, 'quick')
     expect(engine.getGold()).toBe(500 - 80 - 64)
     expect(engine.upgradeCost(0)).toBe(Math.round(80 * 1.2)) // 96
-    engine.upgradeTower(0)
+    engine.upgradeTower(0, 'quick')
     expect(engine.upgradeCost(0)).toBeNull()
     expect(engine.towerStats(0)!.level).toBe(3)
     expect(() => engine.upgradeTower(0)).toThrow('已满级')
@@ -48,18 +48,18 @@ describe('建造 / 升级 / 出售 经济', () => {
     const engine = makeEngine({ lineup: [cat] })
     engine.placeTower(0, cat.id)
     const lv1 = engine.towerStats(0)!
-    engine.upgradeTower(0)
+    engine.upgradeTower(0, 'quick')
     const lv2 = engine.towerStats(0)!
-    expect(lv2.attack).toBeCloseTo(24 * 1.8, 6)
-    expect(lv2.range).toBeCloseTo(2.2 + 0.3, 6)
+    expect(lv2.attack).toBeCloseTo(24 * 1.6, 6)
+    expect(lv2.range).toBeCloseTo(2.2 + 0.2, 6)
     expect(lv2.attack).toBeGreaterThan(lv1.attack)
   })
 
   it('出售返还 60% 累计投入，并释放建造格', () => {
     const engine = makeEngine({ lineup: [cat] })
     engine.placeTower(0, cat.id)
-    engine.upgradeTower(0)
-    engine.upgradeTower(0)
+    engine.upgradeTower(0, 'quick')
+    engine.upgradeTower(0, 'quick')
     // invested = 80+64+96 = 240 → 返还 144
     const before = engine.getGold()
     engine.sellTower(0)

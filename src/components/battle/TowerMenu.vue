@@ -18,7 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   place: [petId: string]
-  upgrade: []
+  upgrade: [branch: 'quick' | 'heavy' | undefined]
   sell: []
   close: []
   /** 从编队栏开始拖拽宠物（placement 模式） */
@@ -128,14 +128,32 @@ function petName(petId: string): string {
         射程 {{ props.towerStats.range.toFixed(1) }}
       </div>
       <div class="action-row">
-        <button
-          v-if="props.upgradeCost !== null"
-          class="btn btn-primary"
-          :disabled="props.snapshot.gold < props.upgradeCost"
-          @click="emit('upgrade')"
-        >
-          升级 Lv{{ (selectedTower?.level ?? 1) + 1 }}（{{ props.upgradeCost }}🐟）
-        </button>
+        <template v-if="props.upgradeCost !== null">
+          <button
+            v-if="(selectedTower?.level ?? 1) === 1"
+            class="btn btn-primary"
+            :disabled="props.snapshot.gold < props.upgradeCost"
+            @click="emit('upgrade', 'quick')"
+          >
+            速攻（{{ props.upgradeCost }}🐟）
+          </button>
+          <button
+            v-if="(selectedTower?.level ?? 1) === 1"
+            class="btn btn-primary"
+            :disabled="props.snapshot.gold < props.upgradeCost"
+            @click="emit('upgrade', 'heavy')"
+          >
+            重击（{{ props.upgradeCost }}🐟）
+          </button>
+          <button
+            v-if="(selectedTower?.level ?? 1) !== 1"
+            class="btn btn-primary"
+            :disabled="props.snapshot.gold < props.upgradeCost"
+            @click="emit('upgrade', undefined)"
+          >
+            升级 Lv{{ (selectedTower?.level ?? 1) + 1 }}（{{ props.upgradeCost }}🐟）
+          </button>
+        </template>
         <span v-else class="max-lv">已满级</span>
         <button class="btn btn-danger" @click="emit('sell')">
           出售（+{{ props.sellValue }}🐟）

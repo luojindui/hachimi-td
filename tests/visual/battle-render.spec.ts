@@ -43,7 +43,7 @@ describe('战斗画面渲染（真实引擎 + 真实渲染器）', () => {
       for (const slot of slots) {
         const cost = engine.upgradeCost(slot)
         if (cost !== null && engine.getGold() >= cost) {
-          engine.upgradeTower(slot)
+          engine.upgradeTower(slot, 'quick')
           break
         }
       }

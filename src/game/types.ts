@@ -162,6 +162,8 @@ export interface TowerView {
   x: number
   y: number
   level: 1 | 2 | 3
+  /** Lv2 起锁定的专精分支 */
+  path: 'quick' | 'heavy' | null
   cooldownRatio: number
   /** 放置时刻（逻辑秒），渲染层用于放置弹跳 */
   spawnAt: number

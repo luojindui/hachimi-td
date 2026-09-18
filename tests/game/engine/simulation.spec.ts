@@ -25,7 +25,7 @@ function botStep(engine: GameEngine, placed: Set<string>): void {
   for (const slot of BOT_SLOTS) {
     const cost = engine.upgradeCost(slot)
     if (cost !== null && engine.getGold() >= cost) {
-      engine.upgradeTower(slot)
+      engine.upgradeTower(slot, 'quick')
       return
     }
   }

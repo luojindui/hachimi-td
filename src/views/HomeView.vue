@@ -2,11 +2,16 @@
 import { computed, onMounted } from 'vue'
 
 import { listLevels } from '@/game/data/levels'
+import { getDailyChallenge, todayStr } from '@/game/daily'
 import { useProfileStore } from '@/stores/profile'
 import { assets } from '@/render/registry'
 
 const profile = useProfileStore()
 const A = assets()
+const daily = getDailyChallenge(todayStr())
+const dailyDone = computed(
+  () => profile.daily.lastClaimDate === daily.date,
+)
 
 const levels = computed(() =>
   listLevels().map((entry) => ({
@@ -72,6 +77,13 @@ function starsText(id: string): string {
     >
       ♾️ 无尽模式 · 星空粮仓
       <span class="endless-best">最佳纪录：第 {{ profile.endless.bestWave }} 波</span>
+    </RouterLink>
+
+    <RouterLink to="/battle/daily" class="daily card">
+      📅 每日挑战
+      <span class="daily-meta">
+        {{ dailyDone ? '✅ 今日已完成' : `奖励 ${daily.catnipReward}🌿` }}
+      </span>
     </RouterLink>
 
     <section class="entries">
@@ -185,6 +197,21 @@ function starsText(id: string): string {
   flex-wrap: wrap;
   justify-content: center;
   gap: 1rem;
+}
+
+.daily {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.9rem;
+  text-decoration: none;
+  color: inherit;
+  border: 2px solid var(--c-info);
+}
+
+.daily-meta {
+  font-size: 0.8rem;
+  color: var(--c-ink-soft);
 }
 
 .endless {

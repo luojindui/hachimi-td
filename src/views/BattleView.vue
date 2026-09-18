@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { getPet } from '@/game/data/pets'
 import { getLevel } from '@/game/data/levels'
+import { getDailyChallenge, todayStr } from '@/game/daily'
 import { starsFor } from '@/game/engine/GameEngine'
 import type { LevelDef } from '@/game/types'
 import { useProfileStore } from '@/stores/profile'
@@ -24,10 +25,21 @@ const A = assets()
 
 /* ---------- 关卡解析（路由参数在挂载期固定） ---------- */
 
+const isDaily = route.query.daily === '1'
+const challenge = isDaily ? getDailyChallenge(todayStr()) : null
+
 function resolveLevel(): LevelDef {
-  const id = String(route.params.levelId ?? '1')
   try {
-    return getLevel(id)
+    if (isDaily && challenge) {
+      // 每日挑战：在原关卡上叠加血量与初始资金修正
+      const base = getLevel(challenge.levelId)
+      return {
+        ...base,
+        hpMul: base.hpMul * challenge.hpMul,
+        startGold: challenge.startGold,
+      }
+    }
+    return getLevel(String(route.params.levelId ?? '1'))
   } catch {
     router.replace('/')
     return getLevel('1')
@@ -177,11 +189,11 @@ function placePet(petId: string): void {
   selectedSlot.value = null
 }
 
-function upgradeSelected(): void {
+function upgradeSelected(branch?: 'quick' | 'heavy'): void {
   const e = engine.value
   if (!e || selectedSlot.value === null) return
   try {
-    e.upgradeTower(selectedSlot.value)
+    e.upgradeTower(selectedSlot.value, branch)
   } catch {
     /* 忽略 */
   }
@@ -282,7 +294,13 @@ watch(
     const snap = snapshot.value!
     let catnipGained = 0
 
-    if (isEndless) {
+    if (isDaily) {
+      // 每日挑战：胜利才算完成并领取奖励（一天一次）
+      if (outcome === 'victory') {
+        catnipGained = profile.claimDaily(todayStr())
+      }
+      settlement.value = { outcome, stars: 0, catnipGained, kills: snap.kills }
+    } else if (isEndless) {
       const waveReached = snap.waveIndex + 1
       catnipGained = profile.recordEndless(waveReached, snap.kills).catnipGained
       settlement.value = {

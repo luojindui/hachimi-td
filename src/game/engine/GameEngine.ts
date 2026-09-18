@@ -2,17 +2,17 @@ import {
   ARMOR_K,
   CRIT,
   DRAFT_COUNT,
+  TOWER_BRANCHES,
   DRAFT_POOL,
   ENGINE,
   LINEUP_SIZE,
   SELL_REFUND_RATIO,
   STAR_ATTACK_GROWTH,
   STAR_MAX,
-  TOWER_LEVELS,
   UPGRADE_COST_FACTOR_LV2,
   UPGRADE_COST_FACTOR_LV3,
 } from '../data/balance'
-import type { DraftDef } from '../data/balance'
+import type { DraftDef, TowerPath } from '../data/balance'
 import { getEnemy } from '../data/enemies'
 import { getEndlessWave } from '../data/levels'
 import { cellKey, expandPathCells, pointAtDistance, totalPathLength } from '../path'
@@ -68,6 +68,8 @@ interface EngineTower {
   slotIndex: number
   def: PetDef
   level: 1 | 2 | 3
+  /** Lv2 起锁定的专精分支 */
+  path: TowerPath | null
   x: number
   y: number
   cooldown: number
@@ -313,8 +315,8 @@ export class GameEngine {
 
   /* ---------------- 建造 / 升级 / 出售 ---------------- */
 
-  private towerLevelConfig(level: 1 | 2 | 3) {
-    return TOWER_LEVELS[level - 1]!
+  private towerLevelConfig(level: 1 | 2 | 3, path: TowerPath = 'quick') {
+    return TOWER_BRANCHES[path].levels[level - 1]!
   }
 
   /** 战斗进行中才允许的经济操作 */
@@ -360,6 +362,7 @@ export class GameEngine {
       slotIndex,
       def: pet,
       level: 1,
+      path: null,
       x: slot.x,
       y: slot.y,
       cooldown: 0,
@@ -369,16 +372,25 @@ export class GameEngine {
     }
   }
 
-  upgradeTower(slotIndex: number): void {
+  /** Lv1→Lv2 必须二选一专精；Lv2→Lv3 沿用所选分支 */
+  upgradeTower(slotIndex: number, branch?: TowerPath): void {
     this.ensureEditable()
     const tower = this.towers[slotIndex]
     if (!tower) throw new Error('该格没有宠物')
     const cost = this.upgradeCost(slotIndex)
     if (cost === null) throw new Error('已满级')
     if (this.gold < cost) throw new Error('小鱼干不足')
+    if (tower.level === 1) {
+      if (branch !== 'quick' && branch !== 'heavy') {
+        throw new Error('升级到 Lv2 需要选择专精分支')
+      }
+      tower.path = branch
+    } else if (branch && branch !== tower.path) {
+      throw new Error('不能中途更换分支')
+    }
     this.gold -= cost
     tower.invested += cost
-    tower.level = tower.level === 1 ? 2 : 3
+    tower.level = (tower.level + 1) as 1 | 2 | 3
   }
 
   sellTower(slotIndex: number): void {
@@ -636,7 +648,7 @@ export class GameEngine {
     range: number
     splash: number
   } {
-    const lv = this.towerLevelConfig(tower.level)
+    const lv = this.towerLevelConfig(tower.level, tower.path ?? 'quick')
     const attackSpeedMul = 1 + this.bestAuraValue(tower, 'attackSpeed')
     const interval = Math.max(
       ENGINE.MIN_ATTACK_INTERVAL,
@@ -1074,6 +1086,7 @@ export class GameEngine {
         x: t.x,
         y: t.y,
         level: t.level,
+        path: t.path,
         /** 剩余冷却比例：刚发射 ≈1，就绪 =0 */
         cooldownRatio:
           t.lastInterval > 0

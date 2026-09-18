@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import { PINBALL } from '@/game/pinball'
 import { PinballMachine } from '@/game/pinball'
@@ -10,9 +10,23 @@ const profile = useProfileStore()
 const A = assets()
 
 const canvasRef = useTemplateRef<HTMLCanvasElement>('canvas')
+const startBtn = useTemplateRef<HTMLButtonElement>('startBtn')
 const launchX = ref(PINBALL.WIDTH / 2)
 const rolling = ref(false)
 const rewardBanner = ref<{ total: number; jackpot: boolean } | null>(null)
+const continueBtn = useTemplateRef<HTMLButtonElement>('continueBtn')
+
+watch(rewardBanner, (v) => {
+  if (v) {
+    nextTick(() => continueBtn.value?.focus())
+  } else {
+    startBtn.value?.focus()
+  }
+})
+
+function onRewardKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Escape') rewardBanner.value = null
+}
 const history = ref<number[]>([])
 
 const canPlay = computed(() => profile.catnip >= PINBALL.COST && !rolling.value)
@@ -212,7 +226,7 @@ onBeforeUnmount(() => {
         ></canvas>
       </div>
       <div class="controls">
-        <button class="btn btn-primary" :disabled="!canPlay" @click="startRoll">
+        <button ref="startBtn" class="btn btn-primary" :disabled="!canPlay" @click="startRoll">
           {{ rolling ? '滚动中…' : `🎯 投球（${PINBALL.COST}${A.icon('catnip')}）` }}
         </button>
       </div>
@@ -225,11 +239,25 @@ onBeforeUnmount(() => {
     </section>
 
     <!-- 奖励结算 -->
-    <div v-if="rewardBanner" class="reward-mask" role="dialog" aria-modal="true" aria-label="本球奖励">
+    <div
+      v-if="rewardBanner"
+      class="reward-mask"
+      role="dialog"
+      aria-modal="true"
+      aria-label="本球奖励"
+      tabindex="-1"
+      @keydown.esc="onRewardKeydown"
+    >
       <div class="reward card" :class="{ jackpot: rewardBanner.jackpot }">
         <p class="reward-label">{{ rewardBanner.jackpot ? '🌟 大奖！' : '落入奖励槽' }}</p>
         <p class="reward-num">+{{ rewardBanner.total }} {{ A.icon('catnip') }}</p>
-        <button class="btn btn-primary" @click="rewardBanner = null">继续</button>
+        <button
+          ref="continueBtn"
+          class="btn btn-primary"
+          @click="rewardBanner = null"
+        >
+          继续
+        </button>
       </div>
     </div>
   </main>

@@ -49,6 +49,7 @@ router.beforeEach((to) => {
   const profile = useProfileStore()
   if (!profile.initialized) profile.init()
   const id = String(to.params.levelId ?? '1')
+  if (id === 'daily') return true // 每日挑战有自己的规则
   if (id === 'endless') {
     return profile.endlessUnlocked ? true : { name: 'home' }
   }

@@ -12,12 +12,41 @@ export const UPGRADE_COST_FACTOR_LV2 = 0.8
 export const UPGRADE_COST_FACTOR_LV3 = 1.2
 export const SELL_REFUND_RATIO = 0.6
 
-/** 战斗内塔等级成长 */
-export const TOWER_LEVELS = [
-  { level: 1, attackMul: 1.0, rangeBonus: 0, intervalMul: 1.0 },
-  { level: 2, attackMul: 1.8, rangeBonus: 0.3, intervalMul: 0.95 },
-  { level: 3, attackMul: 2.9, rangeBonus: 0.6, intervalMul: 0.9 },
-] as const
+/** 升级分支（Lv2 二选一专精，Lv3 深化同一路径） */
+export type TowerPath = 'quick' | 'heavy'
+
+interface BranchLevel {
+  level: 1 | 2 | 3
+  attackMul: number
+  rangeBonus: number
+  intervalMul: number
+}
+
+export const TOWER_PATHS: readonly TowerPath[] = ['quick', 'heavy']
+
+export const TOWER_BRANCHES: Record<
+  TowerPath,
+  { name: string; desc: string; levels: readonly BranchLevel[] }
+> = {
+  quick: {
+    name: '速攻',
+    desc: '攻速流：攻速成长快，射程小幅扩大',
+    levels: [
+      { level: 1, attackMul: 1.0, rangeBonus: 0, intervalMul: 1.0 },
+      { level: 2, attackMul: 1.6, rangeBonus: 0.2, intervalMul: 0.8 },
+      { level: 3, attackMul: 2.4, rangeBonus: 0.4, intervalMul: 0.65 },
+    ],
+  },
+  heavy: {
+    name: '重击',
+    desc: '爆发流：单发伤害成长快',
+    levels: [
+      { level: 1, attackMul: 1.0, rangeBonus: 0, intervalMul: 1.0 },
+      { level: 2, attackMul: 2.2, rangeBonus: 0.1, intervalMul: 1.1 },
+      { level: 3, attackMul: 3.4, rangeBonus: 0.2, intervalMul: 1.2 },
+    ],
+  },
+}
 
 /* ---------------- 伤害公式 ---------------- */
 

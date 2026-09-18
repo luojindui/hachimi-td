@@ -49,6 +49,9 @@ export const PINBALL = {
   SLOT_Y: 432,
   /** 物理兜底：超时按最近槽位结算 */
   SETTLE_TIMEOUT: 6,
+  /** 低速静止判定：速度低于此值持续一段时间后提前结算（防卡球微颤） */
+  LOW_SPEED: 25,
+  LOW_SPEED_TIME: 0.6,
   /** 金钉单次碰撞奖励（猫薄荷） */
   GOLD_PEG_BONUS: 15,
   PEG_ROWS: 6,
@@ -77,50 +80,41 @@ function buildSlots(): PinballSlot[] {
   return slots
 }
 
-/** 以板中心 (180) 为轴的对称钉板；奇数行两侧加护墙钉封死贴墙走廊 */
+/**
+ * 以板中心 (180) 为轴的对称钉板。
+ * 几何约束：任一行最靠边钉的表面与墙间距 ≥ 球径 + 2px ——
+ * 球既不能被楔死在墙钉夹缝，也不能从贴墙走廊溜过。
+ * 金钉按 (行内索引) 对称标记，避免扁平索引错位。
+ */
 function buildPegs(): PinballPeg[] {
   const pegs: PinballPeg[] = []
   const { WALL, WIDTH } = PINBALL
   const span = WIDTH - WALL * 2
   const centerX = WALL + span / 2
+  // 每行的钉数与横向偏移（保证边缘间距 ≥ 球径+2）
+  const rowLayout: { count: number; offset: number }[] = []
   for (let row = 0; row < PINBALL.PEG_ROWS; row++) {
+    if (row % 2 === 0) rowLayout.push({ count: 7, offset: 0 })
+    else rowLayout.push({ count: 6, offset: (span / 6 - span / 7) / 2 + span / 14 })
+  }
+  const goldMarks: { row: number; col: number }[] = [
+    { row: 2, col: 3 },
+    { row: 3, col: 1 },
+    { row: 3, col: 4 },
+  ]
+  for (let row = 0; row < PINBALL.PEG_ROWS; row++) {
+    const { count, offset } = rowLayout[row]!
+    const spacing = span / count
     const y = 90 + row * 44
-    if (row % 2 === 0) {
-      // 偶数行 7 钉，以中心对称
-      const spacing = span / 7
-      for (let k = 0; k < 7; k++) {
-        pegs.push({
-          x: centerX + (k - 3) * spacing,
-          y,
-          r: PINBALL.PEG_R,
-          gold: false,
-        })
-      }
-    } else {
-      // 奇数行 6 钉（中心对称、半格错位）+ 两侧护墙钉
-      const spacing = span / 6
-      for (let k = 0; k < 6; k++) {
-        pegs.push({
-          x: centerX + (k - 2.5) * spacing,
-          y,
-          r: PINBALL.PEG_R,
-          gold: false,
-        })
-      }
-      pegs.push({ x: WALL + 22, y, r: PINBALL.PEG_R, gold: false })
-      pegs.push({ x: WIDTH - WALL - 22, y, r: PINBALL.PEG_R, gold: false })
+    for (let k = 0; k < count; k++) {
+      pegs.push({
+        x: centerX - span / 2 + offset + (k + 0.5) * spacing,
+        y,
+        r: PINBALL.PEG_R,
+        gold: goldMarks.some((m) => m.row === row && m.col === k),
+      })
     }
   }
-  // 3 颗金钉：以板中心对称分布（行 2 中心、行 3 两侧）
-  const centerRowStart = 7 // 行 0 的 7 颗
-  const oddRowStart = 7 + 7 // 行 1 的 6 颗 + 2 护墙钉 = 8
-  const row2Start = oddRowStart + 8
-  const row3Start = row2Start + 7
-  // 行 2（偶数行 7 钉）正中
-  if (pegs[centerRowStart + 3]) pegs[centerRowStart + 3]!.gold = true
-  // 行 3（奇数行）两侧对称位置
-  if (pegs[row3Start + 1]) pegs[row3Start + 1]!.gold = true
-  if (pegs[row3Start + 4]) pegs[row3Start + 4]!.gold = true
   return pegs
 }
 
@@ -143,7 +137,9 @@ export class PinballMachine {
   goldEarned = 0
   landedSlot: number | null = null
   landed = false
+  timedOut = false
   elapsed = 0
+  private lowSpeedTime = 0
 
   private launchX = PINBALL.WIDTH / 2
   private readonly jitterRng: () => number
@@ -183,6 +179,7 @@ export class PinballMachine {
     this.goldEarned = 0
     this.goldHit.clear()
     this.elapsed = 0
+    this.lowSpeedTime = 0
     const jitter = (this.jitterRng() - 0.5) * 60
     this.ball = {
       x: this.launchX,
@@ -208,6 +205,7 @@ export class PinballMachine {
     const clamped = Math.min(dt, 1 / 30)
     this.elapsed += clamped
     if (this.elapsed > PINBALL.SETTLE_TIMEOUT) {
+      this.timedOut = true
       this.resolveNearest(ball.x)
       return 'landed'
     }
@@ -262,6 +260,19 @@ export class PinballMachine {
         ball.vx = -Math.abs(ball.vx) * PINBALL.WALL_REST
       }
 
+      // 低速近静止：提前按最近非大奖槽结算（避免卡球微颤）
+      const speed = Math.hypot(ball.vx, ball.vy)
+      if (speed < PINBALL.LOW_SPEED && ball.y < PINBALL.SLOT_Y - 20) {
+        this.lowSpeedTime += h
+        if (this.lowSpeedTime > PINBALL.LOW_SPEED_TIME) {
+          this.timedOut = true
+          this.resolveNearest(ball.x)
+          return 'landed'
+        }
+      } else {
+        this.lowSpeedTime = 0
+      }
+
       // 落入奖励槽
       if (ball.y >= PINBALL.SLOT_Y - PINBALL.BALL_R) {
         this.resolveSlot(ball.x)
@@ -278,10 +289,23 @@ export class PinballMachine {
     this.landed = true
   }
 
+  /** 兜底结算：永不判大奖（防卡球白嫖 400） */
   private resolveNearest(x: number): void {
     this.ball = null
-    this.landedSlot = this.nearestSlotIndex(x)
+    let best = 3 // 默认中间小奖槽
+    let bestDist = Infinity
+    this.slots.forEach((s, i) => {
+      if (s.jackpot) return
+      const center = (s.x0 + s.x1) / 2
+      const d = Math.abs(center - x)
+      if (d < bestDist) {
+        bestDist = d
+        best = i
+      }
+    })
+    this.landedSlot = best
     this.landed = true
+    this.timedOut = true
   }
 
   private nearestSlotIndex(x: number): number {

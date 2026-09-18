@@ -51,7 +51,7 @@ function autoPlay(
       for (const slot of slots) {
         const cost = engine.upgradeCost(slot)
         if (cost !== null && engine.getGold() >= cost) {
-          engine.upgradeTower(slot)
+          engine.upgradeTower(slot, 'quick')
           break
         }
       }

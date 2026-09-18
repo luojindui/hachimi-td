@@ -147,9 +147,14 @@ describe('TowerMenu', () => {
     })
     expect(wrapper.text()).toContain('田园猫')
     expect(wrapper.text()).toContain('Lv1')
-    expect(wrapper.text()).toContain('升级 Lv2')
+    // Lv1 → Lv2 需要二选一分支
+    expect(wrapper.text()).toContain('速攻')
+    expect(wrapper.text()).toContain('重击')
     expect(wrapper.text()).toContain('出售')
 
+    const primary = wrapper.find('.action-row .btn-primary')
+    await primary.trigger('click')
+    expect(wrapper.emitted('upgrade')).toEqual([['quick']])
     await wrapper.find('.action-row .btn-danger').trigger('click')
     expect(wrapper.emitted('sell')).toBeTruthy()
     wrapper.unmount()

@@ -30,6 +30,7 @@ export interface DrawResult {
 }
 
 const SAVE_VERSION = 1
+const DAILY_REWARD = 150
 const SAVE_KEY = 'hachimi-td:save:v1'
 const CORRUPTED_KEY = 'hachimi-td:backup:corrupted'
 
@@ -50,6 +51,7 @@ function freshSave(): SaveDataV1 {
     gacha: { totalDraws: 0, srPity: 0, ssrPity: 0, firstTenDone: false },
     starMilestones: [],
     talents: [],
+    daily: { lastClaimDate: '' },
     stats: { totalKills: 0, battlesWon: 0 },
   }
 }
@@ -66,6 +68,7 @@ function emptySave(): SaveDataV1 {
     gacha: { totalDraws: 0, srPity: 0, ssrPity: 0, firstTenDone: false },
     starMilestones: [],
     talents: [],
+    daily: { lastClaimDate: '' },
     stats: { totalKills: 0, battlesWon: 0 },
   }
 }
@@ -149,6 +152,11 @@ function hydrate(raw: unknown): SaveDataV1 {
       (id): id is string => typeof id === 'string' && valid.has(id),
     )
   }
+  if (typeof r.daily === 'object' && r.daily !== null) {
+    const d = r.daily as { lastClaimDate?: unknown }
+    out.daily.lastClaimDate =
+      typeof d.lastClaimDate === 'string' ? d.lastClaimDate : ''
+  }
   if (typeof r.stats === 'object' && r.stats !== null) {
     const s = r.stats as { totalKills?: unknown; battlesWon?: unknown }
     out.stats = {
@@ -216,6 +224,7 @@ interface ProfileShape {
   gacha: { totalDraws: number; srPity: number; ssrPity: number; firstTenDone: boolean }
   starMilestones: number[]
   talents: string[]
+  daily: { lastClaimDate: string }
   stats: { totalKills: number; battlesWon: number }
 }
 
@@ -310,6 +319,7 @@ export const useProfileStore = defineStore('profile', {
     stats: { totalKills: 0, battlesWon: 0 },
     /** 已购买的天赋节点 id */
     talents: [] as string[],
+    daily: { lastClaimDate: '' },
     /** 当前环境是否可持久化（false = 无痕模式，仅内存） */
     persistent: true,
     /** 上次装载是否为损坏恢复（用于 UI 提示） */
@@ -391,6 +401,7 @@ export const useProfileStore = defineStore('profile', {
         endless: this.endless,
         gacha: this.gacha,
         starMilestones: this.starMilestones,
+        daily: this.daily,
         talents: this.talents,
         stats: this.stats,
       }
@@ -443,6 +454,17 @@ export const useProfileStore = defineStore('profile', {
       this.talents.push(nodeId)
       this.persist()
       return true
+    },
+
+    /* ---------------- 每日挑战 ---------------- */
+
+    /** 领取每日挑战首通奖励（同一天只发一次） */
+    claimDaily(date: string): number {
+      if (this.daily.lastClaimDate === date) return 0
+      this.daily.lastClaimDate = date
+      this.catnip += DAILY_REWARD
+      this.persist()
+      return DAILY_REWARD
     },
 
     /** 编辑出战编队（去重、限 6 只、仅限已拥有） */
