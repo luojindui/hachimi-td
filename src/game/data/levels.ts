@@ -595,7 +595,7 @@ const LEVEL_LIST: readonly LevelDef[] = [
       },
       {
         entries: [
-          { enemyId: 'shield', count: 5, interval: 1.2, elite: true },
+          { enemyId: 'shield', count: 5, interval: 1.2 },
           { enemyId: 'crow', count: 5, interval: 1.4, delay: 4 },
         ],
         reward: 64,
@@ -607,7 +607,7 @@ const LEVEL_LIST: readonly LevelDef[] = [
       {
         entries: [
           { enemyId: 'shield', count: 4, interval: 1.2 },
-          { enemyId: 'swift', count: 6, interval: 0.7, delay: 3, elite: true },
+          { enemyId: 'swift', count: 3, interval: 0.7, elite: true },
           { enemyId: 'crow', count: 4, interval: 1.4, delay: 5 },
           { enemyId: 'ratking', count: 1, interval: 1, delay: 10 },
         ],
