@@ -1,0 +1,116 @@
+/* ============================================================
+ * 哈基米塔防 · 全局样式与设计令牌（暖色可爱风）
+ * ============================================================ */
+
+:root {
+  /* 基础色板 */
+  --c-bg: #fdf6ec;
+  --c-bg-card: #ffffff;
+  --c-bg-sunken: #f6ecdd;
+  --c-primary: #f59e42;
+  --c-primary-deep: #e07b2a;
+  --c-primary-soft: #fde8cf;
+  --c-ink: #4a3b32;
+  --c-ink-soft: #8a7a6e;
+  --c-line: #ecdcc7;
+  --c-danger: #e04b4b;
+  --c-success: #58b368;
+  --c-info: #4a90e2;
+
+  /* 稀有度 */
+  --c-rarity-n: #9aa3ad;
+  --c-rarity-r: #4a90e2;
+  --c-rarity-sr: #9b59d0;
+  --c-rarity-ssr: #e6a817;
+
+  /* 圆角与阴影 */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --shadow-card: 0 2px 10px rgba(74, 59, 50, 0.08);
+
+  font-size: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--c-bg);
+  color: var(--c-ink);
+  font-family:
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei',
+    system-ui,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* 通用按钮 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  padding: 0.55em 1.3em;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 600;
+  transition:
+    transform 0.08s ease,
+    filter 0.15s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.btn-primary {
+  background: var(--c-primary);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--c-primary-deep);
+}
+
+.btn-primary:active:not(:disabled) {
+  box-shadow: 0 1px 0 var(--c-primary-deep);
+}
+
+.btn-ghost {
+  background: var(--c-bg-sunken);
+  color: var(--c-ink);
+}
+
+.btn-danger {
+  background: var(--c-danger);
+  color: #fff;
+}
+
+/* 通用卡片 */
+.card {
+  background: var(--c-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
