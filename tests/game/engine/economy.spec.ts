@@ -111,3 +111,43 @@ describe('建造 / 升级 / 出售 经济', () => {
     expect(() => makeEngine({ lineup: [dup, dup] })).toThrow('重复')
   })
 })
+
+describe('升级分支（Lv2 二选一专精）', () => {
+  it('Lv1→Lv2 必须选择分支', () => {
+    const engine = makeEngine({ lineup: [cat] })
+    engine.placeTower(0, cat.id)
+    expect(() => engine.upgradeTower(0)).toThrow('专精分支')
+  })
+
+  it('速攻分支：攻速成长快 + 射程小幅扩大', () => {
+    const engine = makeEngine({ lineup: [cat] })
+    engine.placeTower(0, cat.id)
+    engine.upgradeTower(0, 'quick')
+    engine.upgradeTower(0, 'quick')
+    const s = engine.towerStats(0)!
+    expect(s.attack).toBeCloseTo(24 * 2.4, 6)
+    expect(s.interval).toBeCloseTo(1.1 * 0.65, 6)
+    expect(s.range).toBeCloseTo(2.2 + 0.4, 6)
+    expect(s.level).toBe(3)
+  })
+
+  it('重击分支：单发伤害成长快', () => {
+    const engine = makeEngine({ lineup: [cat] })
+    engine.placeTower(0, cat.id)
+    engine.upgradeTower(0, 'heavy')
+    const s = engine.towerStats(0)!
+    expect(s.attack).toBeCloseTo(24 * 2.2, 6)
+    expect(s.interval).toBeCloseTo(1.1 * 1.1, 6)
+    // 同成本下重击单发更高但总 DPS 更低
+    const quickDps = (24 * 2.4) / (1.1 * 0.65)
+    const heavyDps = (24 * 2.2) / (1.1 * 1.1)
+    expect(heavyDps).toBeLessThan(quickDps)
+  })
+
+  it('分支锁定：Lv2 后不能更换分支', () => {
+    const engine = makeEngine({ lineup: [cat] })
+    engine.placeTower(0, cat.id)
+    engine.upgradeTower(0, 'quick')
+    expect(() => engine.upgradeTower(0, 'heavy')).toThrow('不能中途更换分支')
+  })
+})
