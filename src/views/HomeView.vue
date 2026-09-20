@@ -30,7 +30,6 @@ const levels = computed(() =>
 )
 
 onMounted(() => {
-  if (!profile.initialized) profile.init()
 })
 
 function starsText(id: string): string {
@@ -67,6 +66,12 @@ function starsText(id: string): string {
             </span>
             <span class="level-meta">
               <span class="stars">{{ starsText(entry.id) }}</span>
+              <span
+                class="level-gold"
+                :title="`首通 ${entry.firstClearCatnip} / 重复 ${entry.repeatClearCatnip}`"
+              >
+                🐟 {{ entry.firstClearCatnip }}
+              </span>
             </span>
           </RouterLink>
           <div v-else class="level card locked">
@@ -188,6 +193,11 @@ function starsText(id: string): string {
 .level.locked {
   opacity: 0.55;
   pointer-events: none;
+}
+
+.level-gold {
+  font-size: 0.75rem;
+  color: var(--c-ink-soft, #8a8f98);
 }
 
 .level-name {
