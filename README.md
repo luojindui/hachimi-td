@@ -24,7 +24,7 @@ npm install
 # 启动开发服务器
 npm run dev
 
-# 运行完整测试（136+ 用例）
+# 运行完整测试（220 用例）
 npm test
 
 # 类型检查
@@ -80,7 +80,7 @@ docs/PRD.md          # 产品需求文档（开发与审核的唯一基准）
 
 ## 质量门禁
 
-- `npm test` 全绿（13 个文件、136+ 用例）
+- `npm test` 全绿（23 个文件、220 用例）
 - `npm run typecheck` 零错误（strict + noUncheckedIndexedAccess）
 - `npm run build` 成功
 

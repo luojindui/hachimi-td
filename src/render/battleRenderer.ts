@@ -55,13 +55,6 @@ function ell(
   ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); ctx.fill()
 }
 
-function rr(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number, r: number,
-): void {
-  roundedRect(ctx, x, y, w, h, r)
-}
-
 function strokePath(
   ctx: CanvasRenderingContext2D,
   style: string | CanvasGradient,
@@ -138,7 +131,7 @@ function drawScenery(
     ctx.fillStyle = 'rgba(196,166,110,0.85)'
     ell(ctx, x, y, 12, 10)
     ctx.fillStyle = 'rgba(150,122,74,0.85)'
-    rr(ctx, x - 6, y - 14, 12, 6, 3); ctx.fill()
+    roundedRect(ctx, x - 6, y - 14, 12, 6, 3); ctx.fill()
   }
 
   switch (level.theme) {

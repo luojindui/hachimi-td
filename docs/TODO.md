@@ -54,9 +54,9 @@
 
 ## 六、技术债（以后会疼）
 
-- [ ] **roundedRect 三处重复**：battleRenderer.ts ×2 + PinballView.vue ×1 → 抽 render/canvasUtils.ts
-- [ ] **drawEnemySpec 嚎叫冲击波分支不可达**：渲染器从不传 sinceSpawn 给 drawEnemy；删除或接通
-- [ ] **store 对关卡 id 的隐含依赖**：endlessUnlocked 硬编码 '8'、解锁用 Number(id)-1，levels.ts 加非数字 id 会静默坏
+- [x] **roundedRect 重复**（2026-09：PinballView 已随弹珠屋移除；battleRenderer 内 rr 别名已删，统一 roundedRect）
+- [x] **drawEnemySpec 嚎叫冲击波分支不可达**（2026-09 已删除；Boss 嚎叫视觉效果由 howled 状态图标承担）
+- [x] **store 对关卡 id 的隐含依赖**（2026-09：解锁改为 listLevels 索引驱动，无尽解锁取列表末关）
 - [ ] **PetDef 内嵌渲染占位字段**（emoji/tint/projectile）：换真正美术外包时再抽离
 - [ ] **主入口三重 init 防御**：App.vue/BattleView watch/HomeView 重复 profile.init()（幂等无害，可简化）
 - [ ] **视觉测试文件系统副作用**：vitest run 向 art-output/ 写 PNG，CI 只读环境会挂（当前 CI 无 test job 前无影响；test.yml 已加，观察是否挂）

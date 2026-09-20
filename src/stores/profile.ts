@@ -338,9 +338,12 @@ export const useProfileStore = defineStore('profile', {
     },
     /** 已解锁的普通关卡 id 列表（第 n 关解锁条件：第 n-1 关已通关；第 1 关默认解锁） */
     unlockedLevelIds(state): string[] {
+      const levels = listLevels()
       const unlocked: string[] = []
-      for (const level of listLevels()) {
-        if (level.id === '1' || state.levels[String(Number(level.id) - 1)]?.cleared) {
+      for (let i = 0; i < levels.length; i++) {
+        const level = levels[i]!
+        // 首关始终解锁；后续按前一关通关解锁（索引驱动，不依赖 id 数字连续）
+        if (i === 0 || state.levels[levels[i - 1]!.id]?.cleared) {
           unlocked.push(level.id)
         } else {
           break
@@ -349,7 +352,9 @@ export const useProfileStore = defineStore('profile', {
       return unlocked
     },
     endlessUnlocked(state): boolean {
-      return Boolean(state.levels['8']?.cleared)
+      const levels = listLevels()
+      const last = levels[levels.length - 1]!.id
+      return Boolean(state.levels[last]?.cleared)
     },
     ownedPetIds(state): string[] {
       return state.pets.map((p) => p.id)

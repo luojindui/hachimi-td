@@ -528,13 +528,6 @@ function drawEnemySpec(
       })
     }
   }
-  // Boss 嚎叫冲击波
-  if (anim?.t !== undefined && anim.sinceSpawn !== undefined && anim.sinceSpawn < 0.6) {
-    const k = anim.sinceSpawn / 0.6
-    c.strokeStyle = `rgba(255,215,94,${(1 - k).toFixed(2)})`
-    c.lineWidth = 3
-    c.beginPath(); c.arc(0, 0, 26 + k * 30, 0, Math.PI * 2); c.stroke()
-  }
   // 受击闪白
   if (anim?.flash) {
     c.globalAlpha = 0.5
