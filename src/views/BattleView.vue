@@ -311,7 +311,7 @@ watch(
     if (isDaily) {
       // 每日挑战：胜利才算完成并领取奖励（一天一次）
       if (outcome === 'victory') {
-        catnipGained = profile.claimDaily(todayStr())
+        catnipGained = profile.claimDaily(todayStr(), challenge?.catnipReward ?? 150)
       }
       settlement.value = { outcome, stars: 0, catnipGained, kills: snap.kills }
     } else if (isEndless) {

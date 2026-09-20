@@ -37,13 +37,16 @@ export function getDailyChallenge(date: string): DailyChallenge {
   if (commonOnly) notes.push('只能出战 N/R 宠物')
   notes.push(`初始资金 ${startGold}`)
 
+  // 奖励随关卡分档：L1=100 ... L8=205
+  const catnipReward = 100 + (Number(levelId) - 1) * 15
+
   return {
     date,
     levelId,
     hpMul,
     startGold,
     commonOnly,
-    catnipReward: 150,
+    catnipReward,
     notes,
   }
 }

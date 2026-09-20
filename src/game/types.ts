@@ -24,7 +24,7 @@ export interface SlowSpec {
 }
 
 export interface AuraSpec {
-  kind: 'attackSpeed' | 'gold' | 'globalAttack'
+  kind: 'attackSpeed' | 'gold' | 'globalAttack' | 'waveGold'
   /** 加成比例（0.2 = +20%） */
   value: number
   /** 生效半径（格子）；超大值表示全场 */
@@ -232,7 +232,7 @@ export interface FloatTextView {
   y: number
   /** 生存剩余秒数 */
   life: number
-  kind: 'gold' | 'leak'
+  kind: 'gold' | 'leak' | 'waveGold'
 }
 
 export type BattleOutcome = 'ongoing' | 'victory' | 'defeat'

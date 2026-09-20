@@ -58,6 +58,9 @@ interface EngineEnemy {
   /** 当前减速乘数（1 = 未减速，取最强减速） */
   slowFactor: number
   slowTimer: number
+  /** 第二层减速（较弱者，50% 效果） */
+  slow2Factor: number
+  slow2Timer: number
   /** 被嚎叫加速的截止时刻（逻辑秒） */
   howlUntil: number
   /** 自身嚎叫冷却（仅 Boss） */
@@ -143,7 +146,19 @@ export interface EngineOptions {
   /** 是否启用波次开始的三选一强化（缺省开启；单测可关闭以保持确定性） */
   draftsEnabled?: boolean
   /** 天赋树永久加成（攻击/赏金比例、粮仓上限加值） */
-  talentBonus?: { attack?: number; gold?: number; baseHp?: number }
+  talentBonus?: {
+    attack?: number
+    gold?: number
+    baseHp?: number
+    /** 对精英伤害加成（比例） */
+    eliteDamage?: number
+    /** 暴击伤害加成（叠加到基础暴击倍率上） */
+    critDamage?: number
+    /** 波次清空奖励加成（比例） */
+    waveGold?: number
+    /** 每场战斗开局小鱼干 */
+    instantGold?: number
+  }
 }
 
 /** 三选一强化带来的持久加成（本局有效） */
@@ -198,6 +213,9 @@ export class GameEngine {
   private readonly draftsEnabled: boolean
   private readonly rng: () => number
   private readonly talentBaseHp: number
+  private readonly talentEliteDamage: number
+  private readonly talentCritDamage: number
+  private readonly talentWaveGold: number
   private enemies: EngineEnemy[] = []
   private towers: (EngineTower | undefined)[] = []
   private projectiles: EngineProjectile[] = []
@@ -223,6 +241,11 @@ export class GameEngine {
     this.rng = options.rng ?? Math.random
     this.draftsEnabled = options.draftsEnabled ?? true
     const talent = options.talentBonus
+    const num = (v: number | undefined): number =>
+      v !== undefined && Number.isFinite(v) ? v : 0
+    this.talentEliteDamage = Math.max(0, num(talent?.eliteDamage))
+    this.talentCritDamage = Math.max(0, num(talent?.critDamage))
+    this.talentWaveGold = Math.max(0, num(talent?.waveGold))
     this.talentBaseHp = Math.max(
       0,
       Math.min(
@@ -246,6 +269,8 @@ export class GameEngine {
           : 0,
     }
     this.gold = this.level.startGold
+    // 战备存款天赋：战斗开局直接入账
+    this.gold += Math.max(0, Math.floor(num(talent?.instantGold)))
     this.countdown = this.firstWaveCountdown
     this.towers = this.level.buildSlots.map(() => undefined)
     this.crates = this.generateCrates()
@@ -552,7 +577,8 @@ export class GameEngine {
       hp,
       maxHp: hp,
       elite,
-      bountyMul: elite ? ENGINE.ELITE.BOUNTY_MUL : 1,
+      bountyMul:
+        (elite ? ENGINE.ELITE.BOUNTY_MUL : 1) * this.levelBountyScale(),
       speed,
       dist: 0,
       x: p0.x,
@@ -560,6 +586,8 @@ export class GameEngine {
       facing: Math.atan2(p1.y - p0.y, p1.x - p0.x),
       slowFactor: 1,
       slowTimer: 0,
+      slow2Factor: 1,
+      slow2Timer: 0,
       flashUntil: 0,
       howlUntil: 0,
       howlTimer: def.boss ? ENGINE.BOSS_HOWL.interval : 0,
@@ -586,10 +614,13 @@ export class GameEngine {
     for (const enemy of this.enemies) {
       const howlMul =
         enemy.howlUntil > this.now ? 1 + ENGINE.BOSS_HOWL.speedBonus : 1
-      const step = enemy.speed * enemy.slowFactor * howlMul * dt
+      const step =
+        enemy.speed * this.effectiveSlow(enemy) * howlMul * dt
       enemy.dist += step
       enemy.slowTimer -= dt
       if (enemy.slowTimer <= 0) enemy.slowFactor = 1
+      enemy.slow2Timer -= dt
+      if (enemy.slow2Timer <= 0) enemy.slow2Factor = 1
 
       const at = pointAtDistance(this.level.path, enemy.dist)
       // 朝向随移动方向更新（渲染层翻转用）
@@ -819,8 +850,9 @@ export class GameEngine {
     if (!Number.isFinite(rawDamage) || rawDamage < 0) return
     // 会心一击强化：概率触发暴击（倍率见 balance.CRIT.DAMAGE）
     let damage = rawDamage
+    if (enemy.elite) damage *= 1 + this.talentEliteDamage
     if (this.buffs.crit > 0 && this.rng() < this.buffs.crit) {
-      damage *= CRIT.DAMAGE
+      damage *= CRIT.DAMAGE + this.talentCritDamage
     }
     const armor = Math.max(0, enemy.def.armor * armorMul)
     const effective = damage * (ARMOR_K / (ARMOR_K + armor))
@@ -841,12 +873,52 @@ export class GameEngine {
     this.addEffect('coin', enemy.x, enemy.y - 0.4)
   }
 
+  /** 关卡赏金缩放：L5 起 +10%/关（无尽按基础值） */
+  private levelBountyScale(): number {
+    const idx = Number(this.level.id)
+    if (!Number.isFinite(idx)) return 1
+    return 1 + 0.1 * Math.max(0, idx - 4)
+  }
+
   private applySlow(enemy: EngineEnemy, spec: SlowSpec): void {
-    const hasActiveSlow = enemy.slowTimer > 0
-    // 减速不叠加：已有减速时，只有更强（factor 更小）或等强的减速才生效
-    if (hasActiveSlow && spec.factor > enemy.slowFactor) return
+    // 双层减速：更强者全额生效，较弱者提供 50% 效果的第二层
+    if (enemy.slowTimer > 0 && spec.factor > enemy.slowFactor) {
+      // 比现有第一层弱：作为第二层记录（若比现有第二层更强）
+      if (enemy.slow2Timer <= 0 || spec.factor < enemy.slow2Factor) {
+        enemy.slow2Factor = spec.factor
+        enemy.slow2Timer = spec.duration
+      }
+      return
+    }
+    // 比现有第一层更强（或无减速）：旧第一层降级为第二层
+    if (enemy.slowTimer > 0) {
+      if (enemy.slow2Timer <= 0 || enemy.slowFactor < enemy.slow2Factor) {
+        enemy.slow2Factor = enemy.slowFactor
+        enemy.slow2Timer = enemy.slowTimer
+      }
+    }
     enemy.slowFactor = spec.factor
     enemy.slowTimer = spec.duration
+  }
+
+  /** 双层合成移速系数：s1 - (1-s2)×0.5，下限 0.35 */
+  private effectiveSlow(enemy: EngineEnemy): number {
+    const s1 = enemy.slowTimer > 0 ? enemy.slowFactor : 1
+    if (enemy.slow2Timer > 0) {
+      return Math.max(0.35, s1 - (1 - enemy.slow2Factor) * 0.5)
+    }
+    return s1
+  }
+
+  /** 在场单位提供的波次清空奖励加成（取最大，不叠加） */
+  private waveGoldBonus(): number {
+    let best = 0
+    for (const tower of this.towers) {
+      const aura = tower?.def.aura
+      if (!aura || aura.kind !== 'waveGold') continue
+      best = Math.max(best, aura.value)
+    }
+    return best
   }
 
   /** 击杀点吃到的赏金光环最大加成 */
@@ -904,7 +976,11 @@ export class GameEngine {
 
     const wave = this.activeWave
     if (wave) {
-      const granted = Math.max(0, wave.reward - this.activeWaveAdvance)
+      const waveGoldBonus = this.waveGoldBonus() + this.talentWaveGold
+      const granted = Math.max(
+        0,
+        Math.round((wave.reward - this.activeWaveAdvance) * (1 + waveGoldBonus)),
+      )
       if (granted > 0) {
         this.gold += granted
         const basePos = this.basePosition()

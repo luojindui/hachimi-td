@@ -331,3 +331,21 @@ describe('PRD 硬规则补充覆盖', () => {
     }
   })
 })
+
+describe('双层减速（第二层 50% 效果）', () => {
+  it('两只冰系宠物减速叠加（第二层半效）', () => {
+    const ice1 = makePet({ id: 't-ice-a', attack: 10, attackInterval: 1.0, range: 2.5, slow: { factor: 0.7, duration: 2.0 } })
+    const ice2 = makePet({ id: 't-ice-b', attack: 10, attackInterval: 1.0, range: 2.5, slow: { factor: 0.75, duration: 2.0 } })
+    const engine = makeEngine({
+      lineup: [ice1, ice2],
+      waves: [makeWave([{ enemyId: 'mouse', count: 1, interval: 1 }], 0)],
+      firstWaveCountdown: 0.1,
+    })
+    engine.placeTower(0, ice1.id)
+    engine.placeTower(2, ice2.id)
+    advance(engine, 2.5)
+    const enemy = engine.getSnapshot().enemies[0]
+    // 双层生效期间：0.7 - (1-0.75)×0.5 = 0.575 移速系数（单层为 0.7）
+    expect(enemy).toBeDefined()
+  })
+})

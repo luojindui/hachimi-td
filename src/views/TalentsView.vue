@@ -27,6 +27,11 @@ function nodeState(node: TalentNode): 'owned' | 'available' | 'locked' {
   )
   if (prereq && !owned.value.has(prereq.id)) return 'locked'
   if (profile.totalStars < node.starReq) return 'locked'
+  // tier3 互斥：兄弟节点已拥有则此节点永久锁定
+  const sibling = TALENTS.find(
+    (t) => t.branch === node.branch && t.tier === node.tier && t.id !== node.id,
+  )
+  if (sibling && owned.value.has(sibling.id)) return 'locked'
   if (profile.catnip < node.cost) return 'locked'
   return 'available'
 }

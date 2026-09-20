@@ -29,7 +29,9 @@ describe('每日挑战配置', () => {
     expect(c.hpMul).toBeLessThanOrEqual(1.5)
     expect(c.startGold).toBeGreaterThanOrEqual(300)
     expect(c.startGold).toBeLessThanOrEqual(380)
-    expect(c.catnipReward).toBe(150)
+    // 分档奖励：L1=100，每关 +15
+    const idx = Number(c.levelId) - 1
+    expect(c.catnipReward).toBe(100 + idx * 15)
     expect(c.notes.length).toBeGreaterThanOrEqual(2)
   })
 

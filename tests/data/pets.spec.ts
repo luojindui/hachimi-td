@@ -57,7 +57,7 @@ describe('宠物卡池数据', () => {
 
     const auraKinds = PET_LIST.filter((p) => p.aura).map((p) => p.aura!.kind)
     expect(auraKinds).toContain('attackSpeed')
-    expect(auraKinds).toContain('gold')
+    expect(auraKinds).toContain('waveGold')
     expect(auraKinds).toContain('globalAttack')
 
     const passives = PET_LIST.filter((p) => p.passive)

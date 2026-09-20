@@ -177,20 +177,33 @@ export interface TalentNode {
   starReq: number
   /** 购买消耗（猫薄荷） */
   cost: number
-  effect: { kind: 'attack' | 'gold' | 'baseHp'; value: number }
+  effect: {
+    kind:
+      | 'attack'
+      | 'gold'
+      | 'baseHp'
+      | 'eliteDamage'
+      | 'critDamage'
+      | 'waveGold'
+      | 'instantGold'
+    value: number
+  }
 }
 
 /** 永久天赋：三系各三级，按累计星数解锁、猫薄荷购买 */
 export const TALENTS: readonly TalentNode[] = [
   { id: 'atk1', name: '猫爪训练 I', desc: '全体攻击 +3%', branch: 'attack', tier: 1, starReq: 3, cost: 200, effect: { kind: 'attack', value: 0.03 } },
   { id: 'atk2', name: '猫爪训练 II', desc: '全体攻击 +6%', branch: 'attack', tier: 2, starReq: 9, cost: 500, effect: { kind: 'attack', value: 0.06 } },
-  { id: 'atk3', name: '猫爪训练 III', desc: '全体攻击 +10%', branch: 'attack', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'attack', value: 0.1 } },
+  { id: 'atk3a', name: '破甲训练', desc: '对精英伤害 +30%', branch: 'attack', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'eliteDamage', value: 0.3 } },
+  { id: 'atk3b', name: '会心强化', desc: '暴击伤害 +50%', branch: 'attack', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'critDamage', value: 0.5 } },
   { id: 'eco1', name: '理财猫 I', desc: '击杀赏金 +5%', branch: 'economy', tier: 1, starReq: 3, cost: 200, effect: { kind: 'gold', value: 0.05 } },
   { id: 'eco2', name: '理财猫 II', desc: '击杀赏金 +10%', branch: 'economy', tier: 2, starReq: 9, cost: 500, effect: { kind: 'gold', value: 0.1 } },
-  { id: 'eco3', name: '理财猫 III', desc: '击杀赏金 +15%', branch: 'economy', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'gold', value: 0.15 } },
+  { id: 'eco3a', name: '理财猫 III', desc: '击杀赏金 +15%', branch: 'economy', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'gold', value: 0.15 } },
+  { id: 'eco3b', name: '丰收猫', desc: '波次清空奖励 +25%', branch: 'economy', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'waveGold', value: 0.25 } },
   { id: 'hp1', name: '粮仓守卫 I', desc: '粮仓上限 +2', branch: 'survival', tier: 1, starReq: 3, cost: 200, effect: { kind: 'baseHp', value: 2 } },
   { id: 'hp2', name: '粮仓守卫 II', desc: '粮仓上限 +4', branch: 'survival', tier: 2, starReq: 9, cost: 500, effect: { kind: 'baseHp', value: 4 } },
-  { id: 'hp3', name: '粮仓守卫 III', desc: '粮仓上限 +6', branch: 'survival', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'baseHp', value: 6 } },
+  { id: 'hp3a', name: '粮仓守卫 III', desc: '粮仓上限 +6', branch: 'survival', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'baseHp', value: 6 } },
+  { id: 'hp3b', name: '战备存款', desc: '每场战斗开局 +200 小鱼干', branch: 'survival', tier: 3, starReq: 18, cost: 1000, effect: { kind: 'instantGold', value: 200 } },
 ]
 
 /* ---------------- 数值锚点（测试用） ---------------- */

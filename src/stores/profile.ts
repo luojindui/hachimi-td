@@ -354,14 +354,35 @@ export const useProfileStore = defineStore('profile', {
       return state.pets.map((p) => p.id)
     },
     /** 天赋带来的永久加成（传入战斗引擎） */
-    talentBonus(state): { attack: number; gold: number; baseHp: number } {
-      const bonus = { attack: 0, gold: 0, baseHp: 0 }
+    talentBonus(state): {
+      attack: number
+      gold: number
+      baseHp: number
+      eliteDamage: number
+      critDamage: number
+      waveGold: number
+      instantGold: number
+    } {
+      const bonus = {
+        attack: 0,
+        gold: 0,
+        baseHp: 0,
+        eliteDamage: 0,
+        critDamage: 0,
+        waveGold: 0,
+        instantGold: 0,
+      }
       for (const id of state.talents) {
         const node = TALENTS.find((t) => t.id === id)
         if (!node) continue
-        if (node.effect.kind === 'attack') bonus.attack += node.effect.value
-        else if (node.effect.kind === 'gold') bonus.gold += node.effect.value
-        else if (node.effect.kind === 'baseHp') bonus.baseHp += node.effect.value
+        const k = node.effect.kind
+        if (k === 'attack') bonus.attack += node.effect.value
+        else if (k === 'gold') bonus.gold += node.effect.value
+        else if (k === 'baseHp') bonus.baseHp += node.effect.value
+        else if (k === 'eliteDamage') bonus.eliteDamage += node.effect.value
+        else if (k === 'critDamage') bonus.critDamage += node.effect.value
+        else if (k === 'waveGold') bonus.waveGold += node.effect.value
+        else if (k === 'instantGold') bonus.instantGold += node.effect.value
       }
       return bonus
     },
@@ -447,6 +468,11 @@ export const useProfileStore = defineStore('profile', {
         (t) => t.branch === node.branch && t.tier === node.tier - 1,
       )
       if (prereq && !this.talents.includes(prereq.id)) return false
+      // tier3 二选一：同分支同级兄弟已拥有则不可购买
+      const sibling = TALENTS.find(
+        (t) => t.branch === node.branch && t.tier === node.tier && t.id !== node.id,
+      )
+      if (sibling && this.talents.includes(sibling.id)) return false
       return this.catnip >= node.cost
     },
 
@@ -462,13 +488,14 @@ export const useProfileStore = defineStore('profile', {
 
     /* ---------------- 每日挑战 ---------------- */
 
-    /** 领取每日挑战首通奖励（同一天只发一次） */
-    claimDaily(date: string): number {
+    /** 领取每日挑战首通奖励（同一天只发一次；金额随难度分档） */
+    claimDaily(date: string, amount: number = DAILY_REWARD): number {
       if (this.daily.lastClaimDate === date) return 0
       this.daily.lastClaimDate = date
-      this.catnip += DAILY_REWARD
+      const reward = Number.isFinite(amount) && amount > 0 ? Math.floor(amount) : DAILY_REWARD
+      this.catnip += reward
       this.persist()
-      return DAILY_REWARD
+      return reward
     },
 
     /** 编辑出战编队（去重、限 6 只、仅限已拥有） */
