@@ -1,8 +1,27 @@
 {
-  "$comment": "复制为 mapping.json 生效。petBadges: 宠物id → 自定义头像（替换战斗塔上的 emoji 徽章）；enemies: 敌人id → 自定义精灵（覆盖 Kenney 单位）。文件路径相对于 public/assets/custom/。",
+  "$comment": "示例：将提取自 APK 的宠物头像映射到宠物徽章（文件本身不入库，见 .gitignore）",
   "petBadges": {
-    "tianyuan-cat": "pet_heads/example_head_1.png",
-    "tianyuan-dog": "pet_heads/example_head_2.png"
+    "tianyuan-cat": "pet_heads/tianyuan-cat.png",
+    "tianyuan-dog": "pet_heads/tianyuan-dog.png",
+    "orange-cat": "pet_heads/orange-cat.png",
+    "xiaobai": "pet_heads/xiaobai.png",
+    "lihua": "pet_heads/lihua.png",
+    "spotty": "pet_heads/spotty.png",
+    "shiba": "pet_heads/shiba.png",
+    "corgi": "pet_heads/corgi.png",
+    "cow-cat": "pet_heads/cow-cat.png",
+    "sanhua": "pet_heads/sanhua.png",
+    "fortune-cat": "pet_heads/fortune-cat.png",
+    "bichon": "pet_heads/bichon.png",
+    "siamese": "pet_heads/siamese.png",
+    "goldie": "pet_heads/goldie.png",
+    "husky": "pet_heads/husky.png",
+    "samoyed": "pet_heads/samoyed.png",
+    "ragdoll": "pet_heads/ragdoll.png",
+    "border": "pet_heads/border.png",
+    "mainecoon": "pet_heads/mainecoon.png",
+    "hachimi": "pet_heads/hachimi.png",
+    "wangcai": "pet_heads/wangcai.png"
   },
   "enemies": {
     "mouse": "enemies/你的小鼠图.png"
