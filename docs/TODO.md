@@ -39,7 +39,7 @@
 ## 四、性能优化（代码审查 P1~P5，当前不卡、怪多/低端机会卡）
 
 - [ ] **getSnapshot 高低频分离**：每帧 6 数组全量分配；低频段（crates/标量 HUD）复用或脏标记
-- [ ] **pointAtDistance 前缀和缓存**：每敌人×每逻辑步重建 segmentLengths 数组；按 path 用 WeakMap 缓存（渲染层 PATH_CACHE 已有先例）
+- [x] **pointAtDistance 段长缓存**（2026-09：WeakMap 按 path 引用缓存）
 - [ ] **弹道尾迹预烘焙 sprite**：每弹每帧 createLinearGradient 是 canvas 热点
 - [ ] **帧内小额分配收敛**：tickProjectiles 每步新建 Map、renderer 每帧 new Set、TowerMenu deployedPetIds 每帧 new Set
 - [ ] **SNAPSHOT 冻结期可视化**：低优先
