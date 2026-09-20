@@ -217,20 +217,39 @@ export function createKenneyProvider(vector: AssetProvider): AssetProvider {
         stroke(3, 'rgba(150, 118, 74, 0.65)', [7, 9]) // 中线虚线
       }
 
-      // 装饰：非路径/非建造格散布树/灌木/岩石
-      const pathSet = new Set(level.path.map((p) => `${p.x},${p.y}`))
+      // 装饰避让：沿折线枚举全部路径格及其 8 邻格（防树冠溢出到路面）
+      const nearPath = new Set<string>()
+      const wps = level.path
+      for (let i = 0; i < wps.length; i++) {
+        const p = wps[i]!
+        const next = wps[i + 1]
+        const steps = next
+          ? Math.max(Math.abs(next.x - p.x), Math.abs(next.y - p.y))
+          : 0
+        const sx = Math.sign(next ? next.x - p.x : 0)
+        const sy = Math.sign(next ? next.y - p.y : 0)
+        for (let t = 0; t <= steps; t++) {
+          const cx2 = p.x + sx * t
+          const cy2 = p.y + sy * t
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+              nearPath.add(`${cx2 + dx},${cy2 + dy}`)
+            }
+          }
+        }
+      }
       const slots = new Set(level.buildSlots.map((s) => `${s.x},${s.y}`))
       const drand = mulberry32(hashString(`${level.id}:decor`))
       for (let y = 0; y < level.grid.rows; y++) {
         for (let x = 0; x < level.grid.cols; x++) {
           const key = `${x},${y}`
-          if (pathSet.has(key) || slots.has(key)) continue
+          if (nearPath.has(key) || slots.has(key)) continue
           const r = drand()
           const cx = x * CELL_SIZE + CELL_SIZE / 2
           const cy = y * CELL_SIZE + CELL_SIZE / 2
-          if (r < 0.1) draw(ctx, 'tree', cx, cy, CELL_SIZE * 0.9)
-          else if (r < 0.16) draw(ctx, 'bush', cx, cy, CELL_SIZE * 0.5)
-          else if (r < 0.2) draw(ctx, 'rock', cx, cy, CELL_SIZE * 0.45)
+          if (r < 0.1) draw(ctx, 'tree', cx, cy, CELL_SIZE * 0.72)
+          else if (r < 0.16) draw(ctx, 'bush', cx, cy, CELL_SIZE * 0.42)
+          else if (r < 0.2) draw(ctx, 'rock', cx, cy, CELL_SIZE * 0.38)
         }
       }
     },

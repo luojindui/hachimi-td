@@ -162,9 +162,25 @@ describe('Kenney CC0 皮肤渲染', () => {
     renderStaticLayer(ctx, level)
     renderDynamic(ctx, engine.getSnapshot(), level, null, 3.3)
 
-    // 断言：路面中心不透明（防止渲染全透明静默通过）
-    const mid = ctx.getImageData(4 * 64 * 2, 4.5 * 64 * 2, 1, 1).data
-    expect(mid[3]).toBe(255)
+    // 结构化像素断言（防回归：全透明/错层/草地杂色静默通过）
+    // 1) 草地区域：绿色主导且不透明
+    const grassZone = ctx.getImageData(1300, 40, 64, 64).data
+    let greenOK = 0
+    let total = 0
+    for (let i = 0; i < grassZone.length; i += 4) {
+      total++
+      if (grassZone[i + 3]! === 255 && grassZone[i + 1]! > grassZone[i]!) greenOK++
+    }
+    expect(greenOK / total).toBeGreaterThan(0.9)
+    // 2) 路面中心：沙色（红/绿高、蓝低）
+    const roadPx = ctx.getImageData(9 * 64 * 2, (6 * 64 + 32) * 2, 1, 1).data
+    expect(roadPx[3]!).toBe(255)
+    expect(roadPx[0]!).toBeCloseTo(179, 0)
+    expect(roadPx[1]!).toBeCloseTo(150, 0)
+    // 3) 道路上不应有树冠绿块（草地绿 g≫r；路面 r>g）
+    const roadPx2 = ctx.getImageData(5 * 64 * 2, (6 * 64 + 32) * 2, 1, 1).data
+    expect(roadPx2[0]!).toBeGreaterThan(roadPx2[1]!)
+
     writeFileSync('art-output/kenney-frame.png', canvas.toBuffer('image/png'))
 
     // 恢复矢量 provider，避免注册表污染后续用例
