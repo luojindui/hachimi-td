@@ -120,6 +120,17 @@ export const ENDLESS = {
 
 export const LINEUP_SIZE = 6
 
+/** 建造格地形元数据（UI 展示用） */
+export const SLOT_KIND_META: Record<
+  string,
+  { name: string; desc: string; color: string }
+> = {
+  normal: { name: '平地', desc: '普通建造格', color: '#8a8f98' },
+  high: { name: '高台', desc: '射程 +0.5', color: '#6ea8dc' },
+  mine: { name: '金矿', desc: '每波清空 +40 小鱼干', color: '#f6b352' },
+  thicket: { name: '草丛', desc: '攻速 +10%', color: '#58b368' },
+}
+
 /* ---------------- 肉鸽三选一 ---------------- */
 
 export type DraftKind =

@@ -257,14 +257,22 @@ export function renderDynamic(
   // 精灵皮肤敌人放大后，血条/状态环/精英星等标记锚点同步放大
   const markerScale = A.markerScale?.() ?? 1
 
-  /* ---- 建造格 ---- */
+  /* ---- 建造格（按地形着色：高台蓝/金矿金/草丛绿） ---- */
   const occupied = new Set(snapshot.towers.map((t) => t.slotIndex))
   ctx.setLineDash([7, 5])
   ctx.lineWidth = 2
   level.buildSlots.forEach((slot, index) => {
     if (occupied.has(index)) return
+    const kindColor =
+      slot.kind === 'high'
+        ? '#6ea8dc'
+        : slot.kind === 'mine'
+          ? '#f6b352'
+          : slot.kind === 'thicket'
+            ? '#58b368'
+            : tiles.slotStroke
     ctx.fillStyle = tiles.slotFill
-    ctx.strokeStyle = tiles.slotStroke
+    ctx.strokeStyle = slot.kind ? kindColor : tiles.slotStroke
     roundedRect(
       ctx,
       slot.x * CELL_SIZE + 8,
@@ -275,6 +283,14 @@ export function renderDynamic(
     )
     ctx.fill()
     ctx.stroke()
+    // 地形角标
+    if (slot.kind && slot.kind !== 'normal') {
+      const glyph = slot.kind === 'high' ? '⛰' : slot.kind === 'mine' ? '⛏' : '🌿'
+      ctx.fillStyle = kindColor
+      ctx.font = 'bold 11px sans-serif'
+      ctx.textAlign = 'left'
+      ctx.fillText(glyph, slot.x * CELL_SIZE + 10, slot.y * CELL_SIZE + 18)
+    }
   })
   ctx.setLineDash([])
 

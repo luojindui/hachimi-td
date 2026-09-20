@@ -130,6 +130,16 @@ export interface WaveDef {
   affixes?: string[]
 }
 
+/** 建造格地形类型 */
+export type TowerKind = 'normal' | 'high' | 'mine' | 'thicket'
+
+export interface BuildSlot {
+  x: number
+  y: number
+  /** 地形类型（缺省 normal）：高台=射程+0.5 / 金矿=每波清空+40 / 草丛=攻速+10% */
+  kind?: TowerKind
+}
+
 export interface LevelDef {
   /** '1'..'8' 或 'endless' */
   id: string
@@ -140,7 +150,7 @@ export interface LevelDef {
   /** 路点序列（格子坐标，可含 -1 / cols 等界外进出点），轴对齐线段 */
   path: readonly Vec2[]
   /** 建造格（格子坐标） */
-  buildSlots: readonly Vec2[]
+  buildSlots: readonly BuildSlot[]
   /** 粮仓血量 */
   baseHp: number
   /** 开局小鱼干 */
@@ -168,6 +178,8 @@ export interface TowerView {
   level: 1 | 2 | 3
   /** Lv2 起锁定的专精分支 */
   path: 'quick' | 'heavy' | null
+  /** 建造格地形类型 */
+  kind: 'normal' | 'high' | 'mine' | 'thicket'
   cooldownRatio: number
   /** 放置时刻（逻辑秒），渲染层用于放置弹跳 */
   spawnAt: number
@@ -238,7 +250,7 @@ export interface FloatTextView {
   y: number
   /** 生存剩余秒数 */
   life: number
-  kind: 'gold' | 'leak' | 'waveGold'
+  kind: 'gold' | 'leak' | 'waveGold' | 'heal'
 }
 
 export type BattleOutcome = 'ongoing' | 'victory' | 'defeat'
@@ -268,6 +280,8 @@ export interface BattleSnapshot {
   draft: readonly DraftOption[] | null
   /** 当前生效的词缀（关卡级 + 波次级） */
   affixes: string[]
+  /** 波间商店：下一波奖励 ×2 已激活 */
+  bountyBoost: boolean
   /** 地图宝箱（未开的可点击） */
   crates: readonly CrateView[]
   kills: number

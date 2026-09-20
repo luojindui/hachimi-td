@@ -15,6 +15,7 @@ import {
 } from '../data/balance'
 import { getAffix } from '../data/affixes'
 import type { DraftDef, TowerPath } from '../data/balance'
+import type { TowerKind } from '../types'
 import { getEnemy } from '../data/enemies'
 import { getEndlessWave } from '../data/levels'
 import { cellKey, expandPathCells, pointAtDistance, totalPathLength } from '../path'
@@ -83,6 +84,8 @@ interface EngineTower {
   level: 1 | 2 | 3
   /** Lv2 起锁定的专精分支 */
   path: TowerPath | null
+  /** 建造格地形类型 */
+  kind: TowerKind
   x: number
   y: number
   cooldown: number
@@ -136,7 +139,7 @@ interface EngineFloatText {
   x: number
   y: number
   life: number
-  kind: 'gold' | 'leak'
+  kind: 'gold' | 'leak' | 'heal'
 }
 
 type Phase = 'countdown' | 'active' | 'gameover'
@@ -251,6 +254,8 @@ export class GameEngine {
   private readonly talentWaveGold: number
   private readonly levelAffixes: string[]
   private activeWaveAffixes: string[] = []
+  /** 波间商店：下一波清空奖励 ×2（一次性） */
+  private bountyBoost = false
   private readonly bondGlobalAttack: number
   private readonly bondGold: number
   private readonly bondBaseHp: number
@@ -440,6 +445,7 @@ export class GameEngine {
       def: pet,
       level: 1,
       path: null,
+      kind: slot.kind ?? 'normal',
       x: slot.x,
       y: slot.y,
       cooldown: 0,
@@ -756,10 +762,11 @@ export class GameEngine {
   } {
     const lv = this.towerLevelConfig(tower.level, tower.path ?? 'quick')
     const attackSpeedMul = 1 + this.bestAuraValue(tower, 'attackSpeed')
+    const kindIntervalMul = tower.kind === 'thicket' ? 0.9 : 1
     const interval = Math.max(
       ENGINE.MIN_ATTACK_INTERVAL,
       (tower.def.attackInterval * lv.intervalMul * this.buffs.intervalMul) /
-        attackSpeedMul,
+        attackSpeedMul * kindIntervalMul,
     )
     const iceBonus =
       tower.def.role === 'ice' ? 1 + this.bondIceAttack : 1
@@ -771,7 +778,10 @@ export class GameEngine {
       (1 + this.buffs.attack) *
       iceBonus
     const range =
-      (tower.def.range + lv.rangeBonus) * (1 + this.buffs.rangeMul)
+      (tower.def.range +
+        lv.rangeBonus +
+        (tower.kind === 'high' ? 0.5 : 0)) *
+      (1 + this.buffs.rangeMul)
     return {
       attack,
       interval,
@@ -1021,6 +1031,44 @@ export class GameEngine {
     return s1
   }
 
+  /* ---------------- 无尽波间商店（金币出口） ---------------- */
+
+  private static SHOP_COST = { repair: 120, reroll: 100, bounty: 80 } as const
+
+  shopCost(id: 'repair' | 'reroll' | 'bounty'): number {
+    return GameEngine.SHOP_COST[id]
+  }
+
+  /** 下一波清空奖励 ×2 是否已激活 */
+  hasBountyBoost(): boolean {
+    return this.bountyBoost
+  }
+
+  /** 购买商店物品（仅无尽进行中可用） */
+  shopBuy(id: 'repair' | 'reroll' | 'bounty'): void {
+    this.ensureEditable()
+    if (!this.level.endless) throw new Error('商店仅无尽模式可用')
+    const cost = GameEngine.SHOP_COST[id]
+    if (this.gold < cost) throw new Error('小鱼干不足')
+    if (id === 'reroll') {
+      if (!this.draftOptions) throw new Error('当前没有可重抽的三选一')
+      this.gold -= cost
+      this.offerDraft()
+      return
+    }
+    this.gold -= cost
+    if (id === 'repair') {
+      const healed = Math.min(5, this.baseMaxHp - this.baseHp)
+      this.baseHp += healed
+      const basePos = this.basePosition()
+      this.addFloat(`+${healed}`, basePos.x, basePos.y, 'heal')
+    } else {
+      this.bountyBoost = true
+      const basePos = this.basePosition()
+      this.addFloat('下一波奖励 ×2', basePos.x, basePos.y, 'gold')
+    }
+  }
+
   /** 当前生效的词缀修饰聚合 */
   private activeEnemyAffixes(): {
     ids: string[]
@@ -1096,7 +1144,7 @@ export class GameEngine {
     text: string,
     x: number,
     y: number,
-    kind: 'gold' | 'leak',
+    kind: 'gold' | 'leak' | 'heal',
   ): void {
     if (this.floats.length >= ENGINE.FLOAT_TEXT_MAX) this.floats.shift()
     this.floats.push({
@@ -1125,12 +1173,23 @@ export class GameEngine {
     if (wave) {
       const waveGoldBonus =
         this.waveGoldBonus() + this.talentWaveGold + this.bondGold
+      const boost = this.bountyBoost ? 2 : 1
+      this.bountyBoost = false
       const granted = Math.max(
         0,
-        Math.round((wave.reward - this.activeWaveAdvance) * (1 + waveGoldBonus)),
+        Math.round(
+          (wave.reward - this.activeWaveAdvance) *
+            (1 + waveGoldBonus) *
+            boost,
+        ),
       )
       if (granted > 0) {
         this.gold += granted
+      }
+      // 金矿格产出（每波清空 +40/座，与波奖励无关）
+      const mineGold = this.towers.filter((t) => t?.kind === 'mine').length * 40
+      if (mineGold > 0) {
+        this.gold += mineGold
         const basePos = this.basePosition()
         this.addFloat(
           `+${granted}`,
@@ -1340,6 +1399,7 @@ export class GameEngine {
         y: t.y,
         level: t.level,
         path: t.path,
+        kind: t.kind,
         /** 剩余冷却比例：刚发射 ≈1，就绪 =0 */
         cooldownRatio:
           t.lastInterval > 0
@@ -1385,6 +1445,7 @@ export class GameEngine {
       waveTotal: this.getWaveTotal(),
       waveInProgress: this.phase === 'active',
       affixes: [...this.levelAffixes, ...this.activeWaveAffixes],
+      bountyBoost: this.bountyBoost,
       nextWaveCountdown:
         this.phase === 'countdown' ? Math.max(0, this.countdown) : 0,
       speed: this.speedMultiplier,
