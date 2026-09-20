@@ -324,6 +324,10 @@ const settlement = ref<{
   catnipGained: number
   kills: number
   waveReached?: number
+  /** 通关奖励部分（首通/重复） */
+  clearReward?: number
+  /** 星数里程碑部分 */
+  milestoneReward?: number
 } | null>(null)
 
 const nextLevelLabel = computed(() => {
@@ -365,8 +369,16 @@ watch(
       }
     } else if (outcome === 'victory') {
       const stars = starsFor(snap.baseHp, snap.baseMaxHp)
-      catnipGained = profile.completeLevel(level.id, stars, snap.kills).catnipGained
-      settlement.value = { outcome, stars, catnipGained, kills: snap.kills }
+      const result = profile.completeLevel(level.id, stars, snap.kills)
+      catnipGained = result.catnipGained
+      settlement.value = {
+        outcome,
+        stars,
+        catnipGained,
+        kills: snap.kills,
+        clearReward: result.clearReward,
+        milestoneReward: result.milestoneReward,
+      }
     } else {
       settlement.value = { outcome, stars: 0, catnipGained: 0, kills: snap.kills }
     }

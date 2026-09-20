@@ -554,14 +554,25 @@ export const useProfileStore = defineStore('profile', {
     completeLevel(levelId: string, rawStars: number, kills: number): {
       catnipGained: number
       firstClear: boolean
+      /** 通关奖励部分（首通/重复） */
+      clearReward: number
+      /** 星数里程碑部分（可能为 0） */
+      milestoneReward: number
     } {
       const level = listLevels().find((l) => l.id === levelId)
-      if (!level) return { catnipGained: 0, firstClear: false }
+      if (!level)
+        return {
+          catnipGained: 0,
+          firstClear: false,
+          clearReward: 0,
+          milestoneReward: 0,
+        }
       const stars = Math.min(3, Math.max(1, Math.floor(rawStars)))
 
       const record = this.levels[levelId]
       const firstClear = !record?.cleared
       let gained = firstClear ? level.firstClearCatnip : level.repeatClearCatnip
+      const clearReward = gained
 
       this.levels[levelId] = {
         cleared: true,
@@ -582,9 +593,12 @@ export const useProfileStore = defineStore('profile', {
         gained += milestone.catnip
       }
 
+      // 里程碑部分 = 总额 - 通关奖励
+      const milestoneReward = Math.max(0, gained - clearReward)
+
       this.catnip += gained
       this.persist()
-      return { catnipGained: gained, firstClear }
+      return { catnipGained: gained, firstClear, clearReward, milestoneReward }
     },
 
     /** 无尽结算：记录最佳波数 + 领取一次性里程碑 */

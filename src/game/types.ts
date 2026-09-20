@@ -282,6 +282,8 @@ export interface BattleSnapshot {
   affixes: string[]
   /** 波间商店：下一波奖励 ×2 已激活 */
   bountyBoost: boolean
+  /** 下一波敌人构成预览（倒计时阶段展示） */
+  nextWavePreview: { enemyId: string; name: string; count: number }[]
   /** 地图宝箱（未开的可点击） */
   crates: readonly CrateView[]
   kills: number

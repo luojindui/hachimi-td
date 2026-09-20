@@ -1079,6 +1079,29 @@ export class GameEngine {
     }
   }
 
+  /** 下一波敌人构成预览（倒计时阶段） */
+  private nextWavePreview(): {
+    enemyId: string
+    name: string
+    count: number
+  }[] {
+    if (this.phase !== 'countdown') return []
+    try {
+      const wave = this.getWaveByIndex(this.waveIndex)
+      const counter = new Map<string, number>()
+      for (const entry of wave.entries) {
+        counter.set(entry.enemyId, (counter.get(entry.enemyId) ?? 0) + entry.count)
+      }
+      return [...counter.entries()].map(([enemyId, count]) => ({
+        enemyId,
+        name: getEnemy(enemyId).name,
+        count,
+      }))
+    } catch {
+      return []
+    }
+  }
+
   /** 当前生效的词缀修饰聚合 */
   private activeEnemyAffixes(): {
     ids: string[]
@@ -1456,6 +1479,7 @@ export class GameEngine {
       waveInProgress: this.phase === 'active',
       affixes: [...this.levelAffixes, ...this.activeWaveAffixes],
       bountyBoost: this.bountyBoost,
+      nextWavePreview: this.nextWavePreview(),
       nextWaveCountdown:
         this.phase === 'countdown' ? Math.max(0, this.countdown) : 0,
       speed: this.speedMultiplier,

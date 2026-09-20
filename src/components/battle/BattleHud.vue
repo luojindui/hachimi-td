@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { BattleSnapshot } from '@/game/types'
 import { assets } from '@/render/registry'
 import { getAffix } from '@/game/data/affixes'
@@ -9,6 +10,12 @@ const props = defineProps<{
   speed: 1 | 2
   isEndless: boolean
 }>()
+
+const previewText = computed(() =>
+  props.snapshot.nextWavePreview
+    .map((e) => `${e.name}×${e.count}`)
+    .join(' '),
+)
 
 const emit = defineEmits<{
   toggleSpeed: []
@@ -50,6 +57,12 @@ function waveText(snap: BattleSnapshot): string {
         @click="emit('callNext')"
       >
         召唤下一波（{{ Math.ceil(props.snapshot.nextWaveCountdown) }}s）
+        <span
+          v-if="props.snapshot.nextWavePreview.length"
+          class="next-preview"
+        >
+          {{ previewText }}
+        </span>
         <span class="call-tip">提前召唤只拿 50% 奖励</span>
       </button>
       <span v-else-if="props.snapshot.draft" class="wave-live">选择强化中…</span>
@@ -172,5 +185,12 @@ function waveText(snap: BattleSnapshot): string {
   border-radius: 4px;
   padding: 1px 6px;
   cursor: help;
+}
+</style>
+<style scoped>
+.next-preview {
+  display: block;
+  font-size: 0.6rem;
+  opacity: 0.85;
 }
 </style>

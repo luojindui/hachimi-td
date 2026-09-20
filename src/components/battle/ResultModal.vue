@@ -11,6 +11,10 @@ const props = defineProps<{
   waveReached?: number
   /** 下一关跳转文案（空 = 不显示） */
   nextLabel?: string
+  /** 通关奖励部分（首通/重复） */
+  clearReward?: number
+  /** 星数里程碑部分 */
+  milestoneReward?: number
 }>()
 
 const emit = defineEmits<{
@@ -47,6 +51,10 @@ const A = assets()
       <p class="line">
         击杀 <strong>{{ props.kills }}</strong> 只鼠贼 ·
         获得 <strong class="catnip">{{ A.icon('catnip') }} × {{ props.catnipGained }}</strong>
+        <span
+          v-if="props.clearReward !== undefined"
+          class="breakdown"
+        >（通关 {{ props.clearReward }}<template v-if="props.milestoneReward"> + 里程碑 {{ props.milestoneReward }}</template>）</span>
       </p>
 
       <div class="actions">
