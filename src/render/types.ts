@@ -1,4 +1,4 @@
-import type { LevelTheme, Rarity } from '@/game/types'
+import type { LevelDef, LevelTheme, Rarity } from '@/game/types'
 
 /** 宠物静态视觉描述 */
 export interface PetVisual {
@@ -86,6 +86,11 @@ export interface AssetProvider {
     heightPx: number,
     anim?: DrawAnim,
   ) => void
+  /**
+   * 精灵地形绘制（可选能力）：渲染整个静态地面（草地/道路/装饰）。
+   * 提供此方法的 provider，静态层将完全交给 provider 绘制。
+   */
+  drawGround?: (ctx: CanvasRenderingContext2D, level: LevelDef) => void
   /** 矢量绘制敌人（可选能力） */
   drawEnemy?: (
     ctx: CanvasRenderingContext2D,

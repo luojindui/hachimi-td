@@ -212,12 +212,17 @@ export function renderStaticLayer(
   const W = level.grid.cols * CELL_SIZE
   const H = level.grid.rows * CELL_SIZE
 
-  /* ---- 场地 ---- */
-  ctx.fillStyle = tiles.bg
-  ctx.fillRect(0, 0, W, H)
+  /* ---- 精灵地形（provider 提供时完全接管地面） ---- */
+  if (A.drawGround) {
+    A.drawGround(ctx, level)
+  } else {
+    /* ---- 场地 ---- */
+    ctx.fillStyle = tiles.bg
+    ctx.fillRect(0, 0, W, H)
 
-  /* ---- 主题装饰（L4 场景层，画在最底层） ---- */
-  drawScenery(ctx, level)
+    /* ---- 主题装饰（L4 场景层，画在最底层） ---- */
+    drawScenery(ctx, level)
+  }
 
   /* ---- 路径 ---- */
   ctx.fillStyle = tiles.path

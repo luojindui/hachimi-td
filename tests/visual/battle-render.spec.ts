@@ -10,8 +10,10 @@ import { describe, expect, it } from 'vitest'
 import { GameEngine } from '@/game/engine/GameEngine'
 import { getLevel } from '@/game/data/levels'
 import { getPet } from '@/game/data/pets'
+import { makePet } from '../game/engine/helpers'
 import { renderBattle, battleCanvasSize } from '@/render/battleRenderer'
-import { assets } from '@/render/registry'
+import { assets, setAssetProvider } from '@/render/registry'
+import { createKenneyProvider } from '@/render/providers/sprite'
 
 const STEP = 1 / 30
 
@@ -21,7 +23,7 @@ describe('战斗画面渲染（真实引擎 + 真实渲染器）', () => {
     const lineup = ['tianyuan-cat', 'tianyuan-dog', 'lihua', 'xiaobai', 'spotty']
     const engine = new GameEngine({
       level,
-    draftsEnabled: false,
+      draftsEnabled: false,
       lineup: lineup.map((id) => getPet(id)),
       firstWaveCountdown: 0.2,
     })
@@ -88,11 +90,11 @@ describe('战斗画面渲染（真实引擎 + 真实渲染器）', () => {
     const sniper = getPet('tianyuan-cat')
     const engine = new GameEngine({
       level,
-    draftsEnabled: false,
+      draftsEnabled: false,
       lineup: [sniper],
       firstWaveCountdown: 0.1,
     })
-    engine.placeTower(1, sniper.id)
+    engine.placeTower(1, 'tianyuan-cat')
     let sawEffects = false
     for (let t = 0; t < 15 && !sawEffects; t += STEP) {
       engine.update(STEP)
@@ -104,4 +106,61 @@ describe('战斗画面渲染（真实引擎 + 真实渲染器）', () => {
 
   // 共享画布
   const canvas = createCanvas(128, 128)
+})
+
+describe('Kenney CC0 皮肤渲染', () => {
+  it('精灵皮肤下完整渲染一帧（地形/塔/敌人）', async () => {
+    const { Image } = await import('@napi-rs/canvas')
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const { installKenneySpritesForTesting } = await import('@/render/providers/sprite')
+
+    const dir = join(process.cwd(), 'public/assets/kenney')
+    const files = [
+      'ground-grass', 'ground-sand', 'ground-dirt', 'road', 'tree', 'bush', 'rock',
+      'tower-base', 'turret-shooter', 'turret-cannon', 'turret-sniper', 'turret-ice',
+      'enemy-mouse', 'enemy-swift', 'enemy-shield', 'enemy-crow', 'enemy-ratking', 'granary',
+    ]
+    // napi Image 为异步解码：必须等 onload 再注入
+    const images: Record<string, unknown> = {}
+    await Promise.all(
+      files.map(
+        (f) =>
+          new Promise<void>((resolve, reject) => {
+            const img = new Image()
+            img.onload = () => {
+              images[f] = img
+              resolve()
+            }
+            img.onerror = () => reject(new Error(`精灵加载失败: ${f}`))
+            img.src = readFileSync(join(dir, `${f}.png`))
+          }),
+      ),
+    )
+    installKenneySpritesForTesting(images as never)
+
+    setAssetProvider(createKenneyProvider(assets()))
+
+    const level = getLevel('1')
+    const { width, height } = battleCanvasSize(level)
+    const canvas = createCanvas(width * 2, height * 2)
+    const ctx = canvas.getContext('2d') as unknown as CanvasRenderingContext2D
+
+    // 用真实宠物（sprite provider 的 drawPet 会查数据表取定位）
+    const sniper = makePet({ id: 'tianyuan-cat', attack: 42, attackInterval: 1.0, range: 2.4 })
+    const engine = new GameEngine({
+      level,
+      lineup: [sniper],
+      starLevels: {},
+      draftsEnabled: false,
+      firstWaveCountdown: 0.2,
+    })
+    engine.placeTower(1, 'tianyuan-cat')
+    for (let i = 0; i < 320; i++) engine.update(1 / 30)
+    renderBattle(ctx, engine.getSnapshot(), level, null, 3.3)
+
+    const out = 'art-output/kenney-frame.png'
+    writeFileSync(out, canvas.toBuffer('image/png'))
+    console.log(`[visual] kenney frame -> ${out} (${canvas.width}x${canvas.height})`)
+  })
 })

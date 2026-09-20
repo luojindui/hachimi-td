@@ -2,10 +2,17 @@ import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 
 import App from './App.vue'
+import { assets, setAssetProvider } from './render/registry'
+import { createKenneyProvider, preloadKenneySprites } from './render/providers/sprite'
 import { router } from './router'
 import './assets/main.css'
 
 const app = createApp(App)
+
+// 素材皮肤：Kenney CC0 精灵包加载完成后切换（加载期间用矢量皮肤兜底）
+void preloadKenneySprites().then(() => {
+  setAssetProvider(createKenneyProvider(assets()))
+})
 
 app.use(createPinia())
 app.use(router)
