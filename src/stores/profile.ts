@@ -11,6 +11,7 @@ import {
   STAR_UP_SHARDS,
   TALENTS,
 } from '@/game/data/balance'
+import { evaluateBonds } from '@/game/data/bonds'
 import { getPet, findPet, PET_POOL } from '@/game/data/pets'
 import { listLevels } from '@/game/data/levels'
 import type { Rarity } from '@/game/types'
@@ -353,6 +354,17 @@ export const useProfileStore = defineStore('profile', {
     ownedPetIds(state): string[] {
       return state.pets.map((p) => p.id)
     },
+    /** 图鉴收集羁绊加成（按已拥有宠物自动激活） */
+    bondBonus(state): {
+      globalAttack: number
+      gold: number
+      baseHp: number
+      iceAttack: number
+      active: string[]
+    } {
+      return evaluateBonds(state.pets.map((p) => getPet(p.id)))
+    },
+
     /** 天赋带来的永久加成（传入战斗引擎） */
     talentBonus(state): {
       attack: number

@@ -120,6 +120,7 @@ const battle = useBattleEngine(() => ({
   lineup: lineupPetDefs(),
   starLevels: starLevels(),
   talentBonus: profile.talentBonus,
+  bondBonus: profile.bondBonus,
 }))
 
 const snapshot = battle.snapshot

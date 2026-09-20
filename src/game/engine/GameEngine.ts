@@ -159,6 +159,14 @@ export interface EngineOptions {
     /** 每场战斗开局小鱼干 */
     instantGold?: number
   }
+  /** 图鉴收集羁绊加成（与天赋独立乘区/加区） */
+  bondBonus?: {
+    globalAttack?: number
+    gold?: number
+    baseHp?: number
+    /** 仅作用于冰系宠物的攻击加成 */
+    iceAttack?: number
+  }
 }
 
 /** 三选一强化带来的持久加成（本局有效） */
@@ -216,6 +224,10 @@ export class GameEngine {
   private readonly talentEliteDamage: number
   private readonly talentCritDamage: number
   private readonly talentWaveGold: number
+  private readonly bondGlobalAttack: number
+  private readonly bondGold: number
+  private readonly bondBaseHp: number
+  private readonly bondIceAttack: number
   private enemies: EngineEnemy[] = []
   private towers: (EngineTower | undefined)[] = []
   private projectiles: EngineProjectile[] = []
@@ -246,6 +258,11 @@ export class GameEngine {
     this.talentEliteDamage = Math.max(0, num(talent?.eliteDamage))
     this.talentCritDamage = Math.max(0, num(talent?.critDamage))
     this.talentWaveGold = Math.max(0, num(talent?.waveGold))
+    const bond = options.bondBonus
+    this.bondGlobalAttack = num(bond?.globalAttack)
+    this.bondGold = num(bond?.gold)
+    this.bondBaseHp = Math.max(0, Math.floor(num(bond?.baseHp)))
+    this.bondIceAttack = num(bond?.iceAttack)
     this.talentBaseHp = Math.max(
       0,
       Math.min(
@@ -255,7 +272,8 @@ export class GameEngine {
           : 0,
       ),
     )
-    this.baseHp = this.level.baseHp + this.talentBaseHp
+    this.baseHp =
+      this.level.baseHp + this.talentBaseHp + this.bondBaseHp
     this.baseMaxHp = this.baseHp
     this.buffs = {
       ...emptyBuffs(),
@@ -264,9 +282,9 @@ export class GameEngine {
           ? talent.attack
           : 0,
       gold:
-        talent?.gold !== undefined && Number.isFinite(talent.gold)
+        (talent?.gold !== undefined && Number.isFinite(talent.gold)
           ? talent.gold
-          : 0,
+          : 0) + this.bondGold,
     }
     this.gold = this.level.startGold
     // 战备存款天赋：战斗开局直接入账
@@ -689,12 +707,15 @@ export class GameEngine {
       (tower.def.attackInterval * lv.intervalMul * this.buffs.intervalMul) /
         attackSpeedMul,
     )
+    const iceBonus =
+      tower.def.role === 'ice' ? 1 + this.bondIceAttack : 1
     const attack =
       tower.def.attack *
       lv.attackMul *
       this.starMul(tower.def.id) *
-      (1 + this.bestAuraValue(tower, 'globalAttack')) *
-      (1 + this.buffs.attack)
+      (1 + this.bestAuraValue(tower, 'globalAttack') + this.bondGlobalAttack) *
+      (1 + this.buffs.attack) *
+      iceBonus
     const range =
       (tower.def.range + lv.rangeBonus) * (1 + this.buffs.rangeMul)
     return {
@@ -976,7 +997,8 @@ export class GameEngine {
 
     const wave = this.activeWave
     if (wave) {
-      const waveGoldBonus = this.waveGoldBonus() + this.talentWaveGold
+      const waveGoldBonus =
+        this.waveGoldBonus() + this.talentWaveGold + this.bondGold
       const granted = Math.max(
         0,
         Math.round((wave.reward - this.activeWaveAdvance) * (1 + waveGoldBonus)),

@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 
 import { LINEUP_SIZE } from '@/game/data/balance'
+import { BOND_LIST, evaluateBonds } from '@/game/data/bonds'
 import { getPet, PET_LIST } from '@/game/data/pets'
 import type { PetDef } from '@/game/types'
 import { useProfileStore } from '@/stores/profile'
@@ -10,6 +11,9 @@ import PetAvatar from '@/components/common/PetAvatar.vue'
 
 const profile = useProfileStore()
 const A = assets()
+const activeBonds = evaluateBonds(
+  profile.pets.map((p) => getPet(p.id)),
+).active
 
 const selectedId = ref<string | null>(null)
 const selected = computed<PetDef | null>(() =>
@@ -170,7 +174,22 @@ function targetsText(pet: PetDef): string {
         <p v-if="lineupMsg" class="lineup-msg">{{ lineupMsg }}</p>
       </template>
       <p v-else class="own-line">获得后可编入出战队伍</p>
+    
+    <section class="card bonds">
+      <h2 class="section-title">🔗 收集羁绊</h2>
+      <div
+        v-for="bond in BOND_LIST"
+        :key="bond.id"
+        :class="['bond', { active: activeBonds.includes(bond.id) }]"
+      >
+        <span class="bond-name">{{ bond.name }}</span>
+        <span class="bond-desc">{{ bond.desc }}</span>
+        <span class="bond-status">{{
+          activeBonds.includes(bond.id) ? '✔ 生效中' : '未激活'
+        }}</span>
+      </div>
     </section>
+</section>
   </main>
 </template>
 
@@ -329,5 +348,46 @@ function targetsText(pet: PetDef): string {
   align-self: center;
   color: var(--c-rarity-ssr);
   font-weight: 700;
+}
+</style>
+<style scoped>
+.bonds {
+  margin-top: 0.8rem;
+}
+
+.section-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.bond {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm, 8px);
+  opacity: 0.55;
+}
+
+.bond.active {
+  opacity: 1;
+  background: rgba(88, 179, 104, 0.1);
+}
+
+.bond-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+  min-width: 6rem;
+}
+
+.bond-desc {
+  flex: 1;
+  font-size: 0.78rem;
+  color: var(--c-ink-soft);
+}
+
+.bond-status {
+  font-size: 0.75rem;
+  color: var(--c-success, #58b368);
 }
 </style>
