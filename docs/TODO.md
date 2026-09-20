@@ -63,6 +63,8 @@
 
 ## 七、已决策不做 / 等待触发
 
+- [x] **Kenney 皮肤审查发现已全部处理**（2026-09，7595ce4e 报告）：缓存键纳入 provider/dpr（1e8cb19）；drawGround/drawPet 降级链一致化 + ready 门禁；敌人标记锚点 ×1.3；CELL_SIZE 引入；主题氛围叠色；视觉测试 setTransform + 像素断言 + provider 恢复；DEV 守卫注入接口；未用资产清理（road/ground-sand/granary）；antiair 映射导弹塔；双投影/死 recoil/seeded 重复/注释过时清理。新增 sprite.spec 6 用例
+
 - [x] **弹珠屋整体移除**（2026-09 用户决策：不好玩）：PinballView/pinball.ts/路由/入口/测试已删；addCatnip 原语保留（通用经济 API）
 
 - [x] 商业游戏素材提取（塔塔冒险队等）：用户确认不上传仅本机自用可行；**待办 = 下面这条自定义皮肤加载器**；提取工具链（AssetStudio/plist 切割）由用户自行操作

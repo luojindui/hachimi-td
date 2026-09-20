@@ -200,7 +200,7 @@ export interface RenderHighlight {
 }
 
 /**
- * 静态层：场地/路径/鼠洞/粮仓/主题装饰。
+ * 静态层：场地/路径/主题装饰（鼠洞与粮仓标记在动态层绘制）。
  * 每个关卡只需渲染一次（调用方缓存画布）。
  */
 export function renderStaticLayer(
@@ -254,6 +254,8 @@ export function renderDynamic(
 ): void {
   const A = assets()
   const tiles = A.tiles(level.theme)
+  // 精灵皮肤敌人放大后，血条/状态环/精英星等标记锚点同步放大
+  const markerScale = A.markerScale?.() ?? 1
 
   /* ---- 建造格 ---- */
   const occupied = new Set(snapshot.towers.map((t) => t.slotIndex))
@@ -355,17 +357,19 @@ export function renderDynamic(
 
     // 底座阴影 + 稀有度描边圆底
     ctx.fillStyle = 'rgba(0,0,0,0.16)'
-    ctx.beginPath()
-    ctx.ellipse(cx, cy + 18, 22, 8, 0, 0, Math.PI * 2)
-    ctx.fill()
+    if (!A.replacesTowerBacking) {
+      ctx.beginPath()
+      ctx.ellipse(cx, cy + 18, 22, 8, 0, 0, Math.PI * 2)
+      ctx.fill()
 
-    ctx.fillStyle = '#fffdf8'
-    ctx.strokeStyle = ring
-    ctx.lineWidth = 3.5
-    ctx.beginPath()
-    ctx.arc(cx, cy + 2, 23 * visual.scale, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.stroke()
+      ctx.fillStyle = '#fffdf8'
+      ctx.strokeStyle = ring
+      ctx.lineWidth = 3.5
+      ctx.beginPath()
+      ctx.arc(cx, cy + 2, 23 * visual.scale, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+    }
 
     // 攻击后坐（刚发射时轻微压缩）与放置弹跳
     const recoil =
@@ -401,7 +405,7 @@ export function renderDynamic(
   /* ---- 敌人 ---- */
   for (const enemy of snapshot.enemies) {
     const visual = A.enemyVisual(enemy.enemyId)
-    const size = (enemy.boss ? 26 : 18) * visual.scale
+    const size = (enemy.boss ? 26 : 18) * visual.scale * markerScale
     const cx = enemy.x * CELL_SIZE + CELL_SIZE / 2
     const cy = enemy.y * CELL_SIZE + CELL_SIZE / 2 - (enemy.flying ? 8 : 0)
 

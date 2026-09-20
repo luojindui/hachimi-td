@@ -14,6 +14,7 @@ import { makePet } from '../game/engine/helpers'
 import { renderBattle, renderStaticLayer, renderDynamic, battleCanvasSize } from '@/render/battleRenderer'
 import { assets, setAssetProvider } from '@/render/registry'
 import { createKenneyProvider } from '@/render/providers/sprite'
+import { createVectorProvider } from '@/render/providers/vector'
 
 const STEP = 1 / 30
 
@@ -145,6 +146,7 @@ describe('Kenney CC0 皮肤渲染', () => {
     const { width, height } = battleCanvasSize(level)
     const canvas = createCanvas(width * 2, height * 2)
     const ctx = canvas.getContext('2d') as unknown as CanvasRenderingContext2D
+    ctx.setTransform(2, 0, 0, 2, 0, 0)
 
     // 用真实宠物（sprite provider 的 drawPet 会查数据表取定位）
     const sniper = makePet({ id: 'tianyuan-cat', attack: 42, attackInterval: 1.0, range: 2.4 })
@@ -159,7 +161,13 @@ describe('Kenney CC0 皮肤渲染', () => {
     for (let i = 0; i < 320; i++) engine.update(1 / 30)
     renderStaticLayer(ctx, level)
     renderDynamic(ctx, engine.getSnapshot(), level, null, 3.3)
+
+    // 断言：路面中心不透明（防止渲染全透明静默通过）
+    const mid = ctx.getImageData(4 * 64 * 2, 4.5 * 64 * 2, 1, 1).data
+    expect(mid[3]).toBe(255)
     writeFileSync('art-output/kenney-frame.png', canvas.toBuffer('image/png'))
-    console.log(`[visual] kenney frame -> art-output/kenney-frame.png (${canvas.width}x${canvas.height})`)
+
+    // 恢复矢量 provider，避免注册表污染后续用例
+    setAssetProvider(createVectorProvider())
   })
 })

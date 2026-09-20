@@ -91,6 +91,13 @@ export interface AssetProvider {
    * 提供此方法的 provider，静态层将完全交给 provider 绘制。
    */
   drawGround?: (ctx: CanvasRenderingContext2D, level: LevelDef) => void
+  /**
+   * 精灵单位放大系数：动态层标记（血条/状态环/精英星）锚点同步放大。
+   * 缺省 1（矢量皮肤）。
+   */
+  markerScale?: () => number
+  /** true = 塔底白盘与稀有度圆环由 provider 的塔绘制接管，渲染层不再画矢量底座 */
+  replacesTowerBacking?: boolean
   /** 矢量绘制敌人（可选能力） */
   drawEnemy?: (
     ctx: CanvasRenderingContext2D,

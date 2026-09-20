@@ -8,3 +8,10 @@ export function mulberry32(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
+
+/** 字符串哈希（装饰散布种子等） */
+export function hashString(str: string): number {
+  let h = 5381
+  for (let i = 0; i < str.length; i++) h = (Math.imul(h, 33) ^ str.charCodeAt(i)) >>> 0
+  return h
+}
