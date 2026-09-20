@@ -1,5 +1,5 @@
 import { listLevels } from './data/levels'
-import { mulberry32 } from './pinball'
+import { mulberry32 } from './rng'
 
 export interface DailyChallenge {
   /** YYYY-MM-DD */
