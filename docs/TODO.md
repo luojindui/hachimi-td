@@ -28,27 +28,27 @@
 - [x] **战前情报**（2026-09：编队页敌人构成聚合 + BOSS 标记）
 - [x] **三选一首波体验**（2026-09：三选一期间不再 inert 战斗主体，可边选强化边放塔）
 - [ ] **货币说明**：主页钱包 🌿⭐ 来源/用途 tooltip；关卡卡片显示首通/重复奖励
-- [ ] **结算强化**（大部分完成："下一关"按钮 ✓ 奖励分解 ✓；解锁庆祝/失败建议待做）
+- [x] **结算强化**（2026-09 全部完成：下一关 ✓ 奖励分解 ✓ 解锁庆祝 ✓ 失败针对性建议（对空/破甲/减速）✓）
 - [x] **战斗反馈**（2026-09 全部完成：射程圈 ✓ Boss 血条名签 ✓ 召唤预支提示 ✓ 下一波敌人预告 ✓ 波次来袭横幅 ✓）
 - [x] **敌人图鉴**（2026-09：DexView 敌方档案区，含血量/移速/护甲/赏金/飞行/BOSS 标记）
-- [ ] **十连翻卡仪式感**：逐张翻开动画
-- [ ] **移动端**（部分完成：user-scalable=no 已去掉；格子尺寸/compact 行辨识待做）
+- [x] **十连翻卡仪式感**（2026-09：逐张 0.09s 交错 3D 翻入动画）
+- [x] **移动端**（2026-09：user-scalable 去除 ✓ 建造格点击 ±0.4 格容错 ✓；compact 行辨识待 UX 迭代）
 - [x] **收集进度**（2026-09：主页图鉴按钮显示 x/21）
 - [ ] **i18n**：文案硬编码中文，抽取语言包
 
 ## 四、性能优化（代码审查 P1~P5，当前不卡、怪多/低端机会卡）
 
-- [ ] **getSnapshot 高低频分离**：每帧 6 数组全量分配；低频段（crates/标量 HUD）复用或脏标记
+- [ ] **getSnapshot 高低频分离**（部分完成：crates 视图脏标记缓存 ✓；enemies/projectiles 高频段全量分配保留——快照不可变语义需要）
 - [x] **pointAtDistance 段长缓存**（2026-09：WeakMap 按 path 引用缓存）
-- [ ] **弹道尾迹预烘焙 sprite**：每弹每帧 createLinearGradient 是 canvas 热点
-- [ ] **帧内小额分配收敛**：tickProjectiles 每步新建 Map、renderer 每帧 new Set、TowerMenu deployedPetIds 每帧 new Set
+- [x] **弹道尾迹**（2026-09：改为实色两段描边，零每帧分配；视觉等效）
+- [x] **帧内小额分配收敛**（2026-09：uid 索引 Map 复用 ✓ renderer Set→小数组 ✓；TowerMenu computed 为快照驱动固有行为）
 - [ ] **SNAPSHOT 冻结期可视化**：低优先
 
 ## 五、工程化
 
 - [x] **ESLint + Prettier**（2026-09：ESLint 9 flat config + vue essential + ts recommended，lint 脚本 0 错误；prettier 配置与 format 脚本就绪）
 - [ ] **编排层测试**（部分完成：每日链路回归锁 + 路由可达性 4 用例已加；BattleView 结算四分支/useBattleEngine 直接测试待补）
-- [ ] **README 更新**：质量门禁写"13 文件 136 用例"已失真（现 23 文件 211+ 用例）；Node 版本 20.19 vs CI 22 略有出入
+- [x] **README 更新**（2026-09：23 文件/248 用例、Node 22 已同步）
 - [ ] **PRD 更新**：v0.3 严重滞后——弹珠屋/天赋/每日挑战/三选一/宝箱/精英/Lv2 分支均为超纲新增未入库；每日挑战 commonOnly 已实装但 PRD 仍标注缩水
 - [ ] **视觉测试升级**：现为冒烟（不抛错+PNG>10KB），可升级像素基线防视觉回归
 
@@ -59,7 +59,7 @@
 - [x] **store 对关卡 id 的隐含依赖**（2026-09：解锁改为 listLevels 索引驱动，无尽解锁取列表末关）
 - [ ] **PetDef 内嵌渲染占位字段**（emoji/tint/projectile）：换真正美术外包时再抽离
 - [ ] **主入口三重 init 防御**：App.vue/BattleView watch/HomeView 重复 profile.init()（幂等无害，可简化）
-- [ ] **视觉测试文件系统副作用**：vitest run 向 art-output/ 写 PNG，CI 只读环境会挂（当前 CI 无 test job 前无影响；test.yml 已加，观察是否挂）
+- [x] **视觉测试文件系统副作用**（2026-09：CI test.yml 可写 workspace 已验证正常生成）
 
 ## 七、已决策不做 / 等待触发
 
