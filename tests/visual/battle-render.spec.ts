@@ -11,7 +11,7 @@ import { GameEngine } from '@/game/engine/GameEngine'
 import { getLevel } from '@/game/data/levels'
 import { getPet } from '@/game/data/pets'
 import { makePet } from '../game/engine/helpers'
-import { renderBattle, battleCanvasSize } from '@/render/battleRenderer'
+import { renderBattle, renderStaticLayer, renderDynamic, battleCanvasSize } from '@/render/battleRenderer'
 import { assets, setAssetProvider } from '@/render/registry'
 import { createKenneyProvider } from '@/render/providers/sprite'
 
@@ -157,10 +157,9 @@ describe('Kenney CC0 皮肤渲染', () => {
     })
     engine.placeTower(1, 'tianyuan-cat')
     for (let i = 0; i < 320; i++) engine.update(1 / 30)
-    renderBattle(ctx, engine.getSnapshot(), level, null, 3.3)
-
-    const out = 'art-output/kenney-frame.png'
-    writeFileSync(out, canvas.toBuffer('image/png'))
-    console.log(`[visual] kenney frame -> ${out} (${canvas.width}x${canvas.height})`)
+    renderStaticLayer(ctx, level)
+    renderDynamic(ctx, engine.getSnapshot(), level, null, 3.3)
+    writeFileSync('art-output/kenney-frame.png', canvas.toBuffer('image/png'))
+    console.log(`[visual] kenney frame -> art-output/kenney-frame.png (${canvas.width}x${canvas.height})`)
   })
 })

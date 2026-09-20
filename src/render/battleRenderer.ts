@@ -222,24 +222,23 @@ export function renderStaticLayer(
 
     /* ---- 主题装饰（L4 场景层，画在最底层） ---- */
     drawScenery(ctx, level)
-  }
 
-  /* ---- 路径 ---- */
-  ctx.fillStyle = tiles.path
-  const inset = 5
-  for (const key of pathCellsOf(level)) {
-    const [cx, cy] = key.split(',').map(Number) as [number, number]
-    roundedRect(
-      ctx,
-      cx * CELL_SIZE + inset,
-      cy * CELL_SIZE + inset,
-      CELL_SIZE - inset * 2,
-      CELL_SIZE - inset * 2,
-      10,
-    )
-    ctx.fill()
+    /* ---- 路径（矢量皮肤专用；精灵皮肤由 drawGround 接管） ---- */
+    ctx.fillStyle = tiles.path
+    const inset = 5
+    for (const key of pathCellsOf(level)) {
+      const [cx, cy] = key.split(',').map(Number) as [number, number]
+      roundedRect(
+        ctx,
+        cx * CELL_SIZE + inset,
+        cy * CELL_SIZE + inset,
+        CELL_SIZE - inset * 2,
+        CELL_SIZE - inset * 2,
+        10,
+      )
+      ctx.fill()
+    }
   }
-
 }
 
 /**

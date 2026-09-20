@@ -145,7 +145,13 @@ export function createKenneyProvider(vector: AssetProvider): AssetProvider {
     },
 
     tiles(theme: LevelTheme): ThemeTiles {
-      return vector.tiles(theme)
+      const base = vector.tiles(theme)
+      // 草地精灵皮肤下：建造格用白色半透明，避免沙色块在草地上突兀
+      return {
+        ...base,
+        slotFill: 'rgba(255, 255, 255, 0.14)',
+        slotStroke: 'rgba(255, 255, 255, 0.42)',
+      }
     },
 
     drawGround(ctx: CanvasRenderingContext2D, level: LevelDef): void {
@@ -163,36 +169,31 @@ export function createKenneyProvider(vector: AssetProvider): AssetProvider {
         }
       }
 
-      // 道路：沿路径格铺（横段旋转 90°，纵段用原图）
-      const pathSet = new Set(level.path.map((p) => pathKey(p.x, p.y)))
-      for (const p of level.path) {
-        const key = pathKey(p.x, p.y)
-        if (!pathSet.has(key)) continue
-        const prev = level.path[level.path.indexOf(p) - 1]
-        const next = level.path[level.path.indexOf(p) + 1]
-        const horizontal =
-          (prev && prev.y === p.y) || (next && next.y === p.y)
-        const cx = p.x * cell + cell / 2
-        const cy = p.y * cell + cell / 2
-        draw(ctx, 'road', cx, cy, cell, horizontal ? Math.PI / 2 : 0)
-        // 路径中线虚线（对比度增强）
-        ctx.save()
-        ctx.strokeStyle = 'rgba(120, 90, 55, 0.55)'
-        ctx.lineWidth = 3
-        ctx.setLineDash([7, 9])
-        ctx.beginPath()
-        if (horizontal) {
-          ctx.moveTo(cx - cell / 2, cy)
-          ctx.lineTo(cx + cell / 2, cy)
-        } else {
-          ctx.moveTo(cx, cy - cell / 2)
-          ctx.lineTo(cx, cy + cell / 2)
+      // 道路：沿路径折线连续描边（圆角连接，转弯自然）
+      if (level.path.length > 0) {
+        const pts = level.path.map(
+          (p) => [p.x * cell + cell / 2, p.y * cell + cell / 2] as const,
+        )
+        const stroke = (width: number, style: string, dash?: number[]) => {
+          ctx.save()
+          ctx.lineJoin = 'round'
+          ctx.lineCap = 'round'
+          ctx.lineWidth = width
+          ctx.strokeStyle = style
+          if (dash) ctx.setLineDash(dash)
+          ctx.beginPath()
+          ctx.moveTo(pts[0]![0], pts[0]![1])
+          for (const [x, y] of pts.slice(1)) ctx.lineTo(x, y)
+          ctx.stroke()
+          ctx.restore()
         }
-        ctx.stroke()
-        ctx.restore()
+        stroke(cell * 0.66, '#c9a469') // 路肩
+        stroke(cell * 0.56, '#e7d29a') // 路面
+        stroke(3, 'rgba(150, 118, 74, 0.65)', [7, 9]) // 中线虚线
       }
 
       // 装饰：非路径/非建造格散布树/灌木/岩石
+      const pathSet = new Set(level.path.map((p) => pathKey(p.x, p.y)))
       const slots = new Set(level.buildSlots.map((s) => pathKey(s.x, s.y)))
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
@@ -219,7 +220,7 @@ export function createKenneyProvider(vector: AssetProvider): AssetProvider {
       // 炮塔（固定朝右）
       const turret = ROLE_TURRET[role] ?? 'turret-shooter'
       const recoil = anim?.recoil ? -2 : 0
-      draw(ctx, turret, cx + recoil, cy, cell * 0.72, Math.PI / 2)
+      draw(ctx, turret, cx + recoil, cy, cell * 0.8, Math.PI / 2)
       // 宠物身份徽章（右上角小圆 + emoji）
       const r = heightPx * 0.24
       ctx.save()
@@ -243,19 +244,24 @@ export function createKenneyProvider(vector: AssetProvider): AssetProvider {
         vector.drawEnemy?.(ctx, enemyId, cx, cy, heightPx, anim)
         return
       }
-      if (file) {
-        // Kenney 单位朝上：facing（0=向右）→ 旋转 facing + 90°
-        const rotation = (anim?.facing ?? 0) + Math.PI / 2
-        draw(ctx, file, cx, cy, heightPx * 1.1, rotation)
-        if (anim?.flash) {
-          ctx.save()
-          ctx.globalAlpha = 0.55
-          draw(ctx, file, cx, cy, heightPx * 1.1, rotation)
-          ctx.restore()
-        }
-        return
+      // 落地投影（增强立体感）
+      ctx.save()
+      ctx.globalAlpha = 0.22
+      ctx.fillStyle = '#000'
+      ctx.beginPath()
+      ctx.ellipse(cx, cy + heightPx * 0.42, heightPx * 0.34, heightPx * 0.13, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+      // Kenney 单位朝上：facing（0=向右）→ 旋转 facing + 90°
+      const rotation = (anim?.facing ?? 0) + Math.PI / 2
+      const size = heightPx * 1.3
+      draw(ctx, file, cx, cy, size, rotation)
+      if (anim?.flash) {
+        ctx.save()
+        ctx.globalAlpha = 0.55
+        draw(ctx, file, cx, cy, size, rotation)
+        ctx.restore()
       }
-      vector.drawEnemy?.(ctx, enemyId, cx, cy, heightPx, anim)
     },
   }
 }
