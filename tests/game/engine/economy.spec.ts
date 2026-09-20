@@ -72,15 +72,15 @@ describe('建造 / 升级 / 出售 经济', () => {
   it('星级攻击成长进战斗', () => {
     const engine = makeEngine({ lineup: [cat], starLevels: { 'tianyuan-cat': 3 } })
     engine.placeTower(0, cat.id)
-    // 1 + (3-1)*0.15 = 1.3
-    expect(engine.towerStats(0)!.attack).toBeCloseTo(24 * 1.3, 6)
+    // 1 + (3-1)*0.15 = 1.3，射手 3★ 质变 ×1.04
+    expect(engine.towerStats(0)!.attack).toBeCloseTo(24 * 1.3 * 1.04, 6)
   })
 
   it('星级越界值在引擎内被钳制（99★=5★，NaN=1★）', () => {
     const maxStar = makeEngine({ lineup: [cat], starLevels: { 'tianyuan-cat': 99 } })
     maxStar.placeTower(0, cat.id)
-    // 1 + (5-1)*0.15 = 1.6
-    expect(maxStar.towerStats(0)!.attack).toBeCloseTo(24 * 1.6, 6)
+    // 1 + (5-1)*0.15 = 1.6，射手 5★ 质变 ×1.08
+    expect(maxStar.towerStats(0)!.attack).toBeCloseTo(24 * 1.6 * 1.08, 6)
 
     const invalid = makeEngine({
       lineup: [cat],
@@ -267,5 +267,42 @@ describe('无尽波间商店', () => {
   it('余额不足抛错', () => {
     const engine = endlessEngine({ startGold: 50 })
     expect(() => engine.shopBuy('repair')).toThrow('小鱼干不足')
+  })
+})
+
+describe('★机制解锁（定位质变）', () => {
+  it('3★ 射手：攻击 ×1.04 叠加在星级成长之上', () => {
+    const engine = makeEngine({
+      lineup: [cat],
+      starLevels: { 'tianyuan-cat': 3 },
+      waves: [makeWave([{ enemyId: 'mouse', count: 1, interval: 1 }], 0)],
+      firstWaveCountdown: 100,
+    })
+    engine.placeTower(1, cat.id)
+    // 基础 24 × (1+2×0.15) = 31.2；3★ 质变 ×1.04 = 32.448
+    expect(engine.towerStats(1)!.attack).toBeCloseTo(24 * 1.3 * 1.04, 3)
+  })
+
+  it('5★ 射手：攻击 ×1.08', () => {
+    const engine = makeEngine({
+      lineup: [cat],
+      starLevels: { 'tianyuan-cat': 5 },
+      waves: [makeWave([{ enemyId: 'mouse', count: 1, interval: 1 }], 0)],
+      firstWaveCountdown: 100,
+    })
+    engine.placeTower(1, cat.id)
+    // 24 × 1.6 × 1.08
+    expect(engine.towerStats(1)!.attack).toBeCloseTo(24 * 1.6 * 1.08, 3)
+  })
+
+  it('1★/2★ 无质变', () => {
+    const engine = makeEngine({
+      lineup: [cat],
+      starLevels: { 'tianyuan-cat': 2 },
+      waves: [makeWave([{ enemyId: 'mouse', count: 1, interval: 1 }], 0)],
+      firstWaveCountdown: 100,
+    })
+    engine.placeTower(1, cat.id)
+    expect(engine.towerStats(1)!.attack).toBeCloseTo(24 * 1.15, 6)
   })
 })

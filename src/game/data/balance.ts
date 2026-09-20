@@ -120,6 +120,21 @@ export const ENDLESS = {
 
 export const LINEUP_SIZE = 6
 
+/**
+ * ★机制解锁（v1，按定位）：3★/5★ 质变攻击加成（叠加在星级成长之上）。
+ * 每个定位一条质变线，后续扩展为逐宠专属机制。
+ */
+export const ROLE_STAR_PERKS: Record<
+  string,
+  { at3: number; at5: number; desc: string }
+> = {
+  shooter: { at3: 1.04, at5: 1.08, desc: '3★ 攻击+4% · 5★ 攻击+8%' },
+  cannon: { at3: 1.04, at5: 1.1, desc: '3★ 攻击+4% · 5★ 攻击+10%' },
+  ice: { at3: 1.04, at5: 1.08, desc: '3★ 攻击+4% · 5★ 攻击+8%' },
+  antiair: { at3: 1.05, at5: 1.12, desc: '3★ 攻击+5% · 5★ 攻击+12%' },
+  support: { at3: 1.03, at5: 1.06, desc: '3★ 攻击+3% · 5★ 攻击+6%' },
+}
+
 /** 建造格地形元数据（UI 展示用） */
 export const SLOT_KIND_META: Record<
   string,

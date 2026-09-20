@@ -27,6 +27,6 @@ export interface SaveDataV1 {
   starMilestones: number[]
   /** 已购买的天赋节点 id */
   talents: string[]
-  daily: { lastClaimDate: string }
+  daily: { lastClaimDate: string; history: { date: string; reward: number }[] }
   stats: { totalKills: number; battlesWon: number }
 }

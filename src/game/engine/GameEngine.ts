@@ -12,11 +12,14 @@ import {
   STAR_MAX,
   UPGRADE_COST_FACTOR_LV2,
   UPGRADE_COST_FACTOR_LV3,
+
+  ROLE_STAR_PERKS,
 } from '../data/balance'
 import { getAffix } from '../data/affixes'
 import type { DraftDef, TowerPath } from '../data/balance'
 import type { TowerKind } from '../types'
 import { getEnemy } from '../data/enemies'
+import { findPet } from '../data/pets'
 import { getEndlessWave } from '../data/levels'
 import { cellKey, expandPathCells, pointAtDistance, totalPathLength } from '../path'
 import type {
@@ -840,7 +843,14 @@ export class GameEngine {
 
   private starMul(petId: string): number {
     const stars = clampStars(this.starLevels[petId])
-    return 1 + (stars - 1) * STAR_ATTACK_GROWTH
+    const base = 1 + (stars - 1) * STAR_ATTACK_GROWTH
+    // ★机制解锁：3★/5★ 定位质变（取对应档位，不叠加）
+    const role = findPet(petId)?.role ?? 'shooter'
+    const perk = ROLE_STAR_PERKS[role]
+    if (!perk) return base
+    if (stars >= 5) return base * perk.at5
+    if (stars >= 3) return base * perk.at3
+    return base
   }
 
   private acquireTarget(tower: EngineTower): EngineEnemy | null {

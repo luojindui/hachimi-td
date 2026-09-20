@@ -261,3 +261,42 @@ describe('每日挑战持久化', () => {
     expect(fresh.claimDaily(date)).toBe(0)
   })
 })
+
+describe('每日连签与战报', () => {
+  it('claimDaily 记录战报（最新在前，保留 7 条）', () => {
+    const store = useProfileStore()
+    store.init()
+    const today = new Date().toISOString().slice(0, 10)
+    store.claimDaily(today, 150)
+    store.claimDaily('2099-01-02', 180)
+    store.claimDaily('2099-01-03', 200)
+    expect(store.daily.history[0]!.date).toBe('2099-01-03')
+    expect(store.daily.history.length).toBe(3)
+  })
+
+  it('dailyStreak：连续日期计数，断档归零', () => {
+    const store = useProfileStore()
+    store.init()
+    // 构造：今天 + 昨天 + 前天
+    const fmt = (d: Date) => d.toISOString().slice(0, 10)
+    const day = (offset: number) => {
+      const d = new Date()
+      d.setDate(d.getDate() - offset)
+      return fmt(d)
+    }
+    store.claimDaily('2099-01-01', 150) // 干扰项（远期）
+    store.claimDaily(day(2), 150)
+    store.claimDaily(day(1), 150)
+    store.claimDaily(day(0), 150)
+    expect(store.dailyStreak()).toBe(3)
+  })
+
+  it('间隔超过一天：streak 归零', () => {
+    const store = useProfileStore()
+    store.init()
+    const d = new Date()
+    d.setDate(d.getDate() - 5)
+    store.claimDaily(d.toISOString().slice(0, 10), 150)
+    expect(store.dailyStreak()).toBe(0)
+  })
+})

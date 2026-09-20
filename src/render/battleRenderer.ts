@@ -258,11 +258,11 @@ export function renderDynamic(
   const markerScale = A.markerScale?.() ?? 1
 
   /* ---- 建造格（按地形着色：高台蓝/金矿金/草丛绿） ---- */
-  const occupied = new Set(snapshot.towers.map((t) => t.slotIndex))
+  const occupied = snapshot.towers.map((t) => t.slotIndex)
   ctx.setLineDash([7, 5])
   ctx.lineWidth = 2
   level.buildSlots.forEach((slot, index) => {
-    if (occupied.has(index)) return
+    if (occupied.includes(index)) return
     const kindColor =
       slot.kind === 'high'
         ? '#6ea8dc'
@@ -309,7 +309,7 @@ export function renderDynamic(
   }
 
   /* ---- 拖拽悬停高亮 ---- */
-  if (highlight && !occupied.has(highlight.slotIndex)) {
+  if (highlight && !occupied.includes(highlight.slotIndex)) {
     const slot = level.buildSlots[highlight.slotIndex]
     if (slot) {
       ctx.lineWidth = 4.5
@@ -520,15 +520,8 @@ export function renderDynamic(
     const py = proj.y * CELL_SIZE + CELL_SIZE / 2
     // 尾迹
     const trail = 16
-    const grad = ctx.createLinearGradient(
-      px - Math.cos(proj.angle) * trail,
-      py - Math.sin(proj.angle) * trail,
-      px,
-      py,
-    )
-    grad.addColorStop(0, 'rgba(255,255,255,0)')
-    grad.addColorStop(1, 'rgba(255,235,190,0.75)')
-    strokePath(ctx, grad, 4, k => {
+    // 尾迹：两段实色描边替代每帧渐变对象（零分配）
+    strokePath(ctx, 'rgba(255,235,190,0.28)', 4, k => {
       k.moveTo(px - Math.cos(proj.angle) * trail, py - Math.sin(proj.angle) * trail)
       k.lineTo(px, py)
     })

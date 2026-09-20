@@ -52,7 +52,7 @@ function freshSave(): SaveDataV1 {
     gacha: { totalDraws: 0, srPity: 0, ssrPity: 0, firstTenDone: false },
     starMilestones: [],
     talents: [],
-    daily: { lastClaimDate: '' },
+    daily: { lastClaimDate: '', history: [] as { date: string; reward: number }[] },
     stats: { totalKills: 0, battlesWon: 0 },
   }
 }
@@ -69,7 +69,7 @@ function emptySave(): SaveDataV1 {
     gacha: { totalDraws: 0, srPity: 0, ssrPity: 0, firstTenDone: false },
     starMilestones: [],
     talents: [],
-    daily: { lastClaimDate: '' },
+    daily: { lastClaimDate: '', history: [] as { date: string; reward: number }[] },
     stats: { totalKills: 0, battlesWon: 0 },
   }
 }
@@ -154,9 +154,18 @@ function hydrate(raw: unknown): SaveDataV1 {
     )
   }
   if (typeof r.daily === 'object' && r.daily !== null) {
-    const d = r.daily as { lastClaimDate?: unknown }
+    const d = r.daily as { lastClaimDate?: unknown; history?: unknown }
     out.daily.lastClaimDate =
       typeof d.lastClaimDate === 'string' ? d.lastClaimDate : ''
+    if (Array.isArray(d.history)) {
+      out.daily.history = d.history.filter(
+        (h): h is { date: string; reward: number } =>
+          typeof h === 'object' &&
+          h !== null &&
+          typeof (h as { date?: unknown }).date === 'string' &&
+          typeof (h as { reward?: unknown }).reward === 'number',
+      )
+    }
   }
   if (typeof r.stats === 'object' && r.stats !== null) {
     const s = r.stats as { totalKills?: unknown; battlesWon?: unknown }
@@ -225,7 +234,7 @@ interface ProfileShape {
   gacha: { totalDraws: number; srPity: number; ssrPity: number; firstTenDone: boolean }
   starMilestones: number[]
   talents: string[]
-  daily: { lastClaimDate: string }
+  daily: { lastClaimDate: string; history: { date: string; reward: number }[] }
   stats: { totalKills: number; battlesWon: number }
 }
 
@@ -238,7 +247,7 @@ function applySaveTo(store: ProfileShape, data: SaveDataV1): void {
   store.gacha = { ...data.gacha }
   store.starMilestones = [...data.starMilestones]
   store.talents = [...data.talents]
-  store.daily = { ...data.daily }
+  store.daily = { ...data.daily, history: [...data.daily.history] }
   store.stats = { ...data.stats }
 }
 
@@ -324,7 +333,7 @@ export const useProfileStore = defineStore('profile', {
     stats: { totalKills: 0, battlesWon: 0 },
     /** 已购买的天赋节点 id */
     talents: [] as string[],
-    daily: { lastClaimDate: '' },
+    daily: { lastClaimDate: '', history: [] as { date: string; reward: number }[] },
     /** 当前环境是否可持久化（false = 无痕模式，仅内存） */
     persistent: true,
     /** 上次装载是否为损坏恢复（用于 UI 提示） */
@@ -511,8 +520,26 @@ export const useProfileStore = defineStore('profile', {
       this.daily.lastClaimDate = date
       const reward = Number.isFinite(amount) && amount > 0 ? Math.floor(amount) : DAILY_REWARD
       this.catnip += reward
+      this.daily.history = [{ date, reward }, ...this.daily.history].slice(0, 7)
       this.persist()
       return reward
+    },
+
+    /** 连续签到天数（截止今天或昨天） */
+    dailyStreak(): number {
+      if (this.daily.history.length === 0) return 0
+      const dates = this.daily.history.map((h) => h.date)
+      const dayMs = 86400000
+      const toDay = (d: string) => Math.floor(new Date(d + 'T00:00:00').getTime() / dayMs)
+      const today = Math.floor(Date.now() / dayMs)
+      const last = toDay(dates[0]!)
+      if (today - last > 1) return 0
+      let streak = 1
+      for (let i = 1; i < dates.length; i++) {
+        if (toDay(dates[i]!) === last - i) streak++
+        else break
+      }
+      return streak
     },
 
     /** 编辑出战编队（去重、限 6 只、仅限已拥有） */

@@ -85,7 +85,7 @@ function starsText(id: string): string {
     <RouterLink to="/battle/daily" class="daily card">
       📅 每日挑战
       <span class="daily-meta">
-        {{ dailyDone ? '✅ 今日已完成' : `奖励 ${daily.catnipReward}🌿` }}
+        {{ dailyDone ? `✅ 今日完成 · 连签 ${profile.dailyStreak()} 天` : `奖励 ${daily.catnipReward}🌿` }}
       </span>
     </RouterLink>
 
