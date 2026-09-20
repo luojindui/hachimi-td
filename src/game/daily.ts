@@ -14,6 +14,8 @@ export interface DailyChallenge {
   catnipReward: number
   /** 当日词缀（全部波次生效） */
   affixes: string[]
+  /** 当日任务（完成后各 +30） */
+  tasks: { id: string; desc: string; reward: number }[]
   notes: string[]
 }
 
@@ -47,6 +49,13 @@ export function getDailyChallenge(date: string): DailyChallenge {
   // 奖励随关卡分档：L1=100 ... L8=205
   const catnipReward = 100 + (Number(levelId) - 1) * 15
 
+  // 任务制：3 条固定任务（通关/无漏怪/满编队），各 +30
+  const tasks = [
+    { id: 'clear', desc: '完成每日挑战', reward: 30 },
+    { id: 'noLeak', desc: '全程不漏怪', reward: 30 },
+    { id: 'fullLineup', desc: '编队 6 只宠物出战', reward: 30 },
+  ]
+
   return {
     date,
     levelId,
@@ -55,6 +64,7 @@ export function getDailyChallenge(date: string): DailyChallenge {
     commonOnly,
     affixes,
     catnipReward,
+    tasks,
     notes,
   }
 }

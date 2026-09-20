@@ -15,6 +15,8 @@ const props = defineProps<{
   clearReward?: number
   /** 星数里程碑部分 */
   milestoneReward?: number
+  /** 每日任务完成情况 */
+  tasksDone?: { clear: boolean; noLeak: boolean; fullLineup: boolean }
 }>()
 
 const emit = defineEmits<{
@@ -55,6 +57,13 @@ const A = assets()
           v-if="props.clearReward !== undefined"
           class="breakdown"
         >（通关 {{ props.clearReward }}<template v-if="props.milestoneReward"> + 里程碑 {{ props.milestoneReward }}</template>）</span>
+      </p>
+      <p v-if="props.tasksDone" class="line tasks">
+        <span :class="{ done: props.tasksDone.clear }">✓ 通关</span>
+        <span :class="{ done: props.tasksDone.noLeak }">✓ 无漏怪</span>
+        <span :class="{ done: props.tasksDone.fullLineup }">✓ 满编队</span>
+      </p>
+      <p class="line" hidden>
       </p>
 
       <div class="actions">

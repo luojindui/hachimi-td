@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { BattleSnapshot } from '@/game/types'
 import { assets } from '@/render/registry'
 import { getAffix } from '@/game/data/affixes'
@@ -15,6 +15,20 @@ const previewText = computed(() =>
   props.snapshot.nextWavePreview
     .map((e) => `${e.name}×${e.count}`)
     .join(' '),
+)
+
+/* 波次来袭横幅：waveInProgress 上升沿触发，1.6s 后消退 */
+const banner = ref(false)
+let bannerTimer = 0
+watch(
+  () => props.snapshot.waveInProgress,
+  (now, prev) => {
+    if (now && !prev) {
+      banner.value = true
+      window.clearTimeout(bannerTimer)
+      bannerTimer = window.setTimeout(() => (banner.value = false), 1600)
+    }
+  },
 )
 
 const emit = defineEmits<{
@@ -76,6 +90,7 @@ function waveText(snap: BattleSnapshot): string {
         :title="getAffix(id).desc"
       >⚡ {{ getAffix(id).name }}</span>
     </div>
+    <div v-if="banner" class="wave-banner">⚔️ 第 {{ props.snapshot.waveIndex + 1 }} 波来袭！</div>
   </header>
 </template>
 
@@ -192,5 +207,32 @@ function waveText(snap: BattleSnapshot): string {
   display: block;
   font-size: 0.6rem;
   opacity: 0.85;
+}
+</style>
+<style scoped>
+.wave-banner {
+  position: absolute;
+  top: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(224, 75, 75, 0.92);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 0.3rem 1rem;
+  border-radius: 999px;
+  animation: banner-pop 0.3s ease;
+  z-index: 10;
+}
+
+@keyframes banner-pop {
+  from {
+    transform: translateX(-50%) scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
 }
 </style>

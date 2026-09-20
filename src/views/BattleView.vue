@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getPet } from '@/game/data/pets'
 import { getEnemy } from '@/game/data/enemies'
 import { getAffix } from '@/game/data/affixes'
+import { LINEUP_SIZE } from '@/game/data/balance'
 import { getLevel } from '@/game/data/levels'
 import { getDailyChallenge, todayStr } from '@/game/daily'
 import { starsFor } from '@/game/engine/GameEngine'
@@ -328,6 +329,8 @@ const settlement = ref<{
   clearReward?: number
   /** 星数里程碑部分 */
   milestoneReward?: number
+  /** 每日任务完成情况 */
+  tasksDone?: { clear: boolean; noLeak: boolean; fullLineup: boolean }
 } | null>(null)
 
 const nextLevelLabel = computed(() => {
@@ -355,8 +358,24 @@ watch(
       // 每日挑战：胜利才算完成并领取奖励（一天一次）
       if (outcome === 'victory') {
         catnipGained = profile.claimDaily(todayStr(), challenge?.catnipReward ?? 150)
+        const noLeak = snap.baseHp === snap.baseMaxHp
+        const fullLineup = pickedIds.value.length === LINEUP_SIZE
+        const taskBonus = (noLeak ? 30 : 0) + (fullLineup ? 30 : 0)
+        if (taskBonus > 0) {
+          profile.addCatnip(taskBonus)
+          catnipGained += taskBonus
+        }
       }
-      settlement.value = { outcome, stars: 0, catnipGained, kills: snap.kills }
+      // 任务评估：无漏怪 / 满编队
+      const noLeak = snap.baseHp === snap.baseMaxHp
+      const fullLineup = pickedIds.value.length === LINEUP_SIZE
+      settlement.value = {
+        outcome,
+        stars: 0,
+        catnipGained,
+        kills: snap.kills,
+        tasksDone: { clear: outcome === 'victory', noLeak, fullLineup },
+      }
     } else if (isEndless) {
       const waveReached = snap.waveIndex + 1
       catnipGained = profile.recordEndless(waveReached, snap.kills).catnipGained
