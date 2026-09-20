@@ -1,3 +1,4 @@
+import { pickAffixes } from './affixes'
 import type { LevelDef, WaveDef } from '../types'
 
 import { ENDLESS } from './balance'
@@ -666,6 +667,8 @@ export function getEndlessWave(wave: number): WaveDef {
   if (!Number.isInteger(wave) || wave < 1) {
     throw new Error(`无尽波次非法: ${wave}`)
   }
+  // 词缀：6 波起 1 条，12 波起 2 条（按波次确定性选取）
+  const affixes = pickAffixes(`endless:${wave}`, wave >= 12 ? 2 : wave >= 6 ? 1 : 0)
   const interval = Math.max(0.45, 1.2 - wave * 0.03)
   const elite = wave >= 12
   const entries: WaveDef['entries'] = [
@@ -712,6 +715,7 @@ export function getEndlessWave(wave: number): WaveDef {
   }
   const jumps = Math.floor((wave - 1) / ENDLESS.RAMP_EVERY)
   return {
+    affixes,
     entries,
     // 奖励随难度跳同步放大，保证后期收入能补塔
     reward: Math.round((40 + wave * 2) * Math.pow(1.22, jumps)),

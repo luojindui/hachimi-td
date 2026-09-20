@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { BattleSnapshot } from '@/game/types'
 import { assets } from '@/render/registry'
+import { getAffix } from '@/game/data/affixes'
 
 const props = defineProps<{
   levelName: string
@@ -53,6 +54,14 @@ function waveText(snap: BattleSnapshot): string {
       </button>
       <span v-else-if="props.snapshot.draft" class="wave-live">选择强化中…</span>
       <span v-else-if="props.snapshot.outcome === 'ongoing'" class="wave-live">战斗中…</span>
+    </div>
+    <div v-if="props.snapshot.affixes.length" class="affix-row">
+      <span
+        v-for="id in props.snapshot.affixes"
+        :key="id"
+        class="affix-chip"
+        :title="getAffix(id).desc"
+      >⚡ {{ getAffix(id).name }}</span>
     </div>
   </header>
 </template>
@@ -146,5 +155,22 @@ function waveText(snap: BattleSnapshot): string {
   display: block;
   font-size: 0.6rem;
   opacity: 0.8;
+}
+</style>
+<style scoped>
+.affix-row {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.affix-chip {
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: #b0567a;
+  background: rgba(176, 86, 122, 0.12);
+  border-radius: 4px;
+  padding: 1px 6px;
+  cursor: help;
 }
 </style>

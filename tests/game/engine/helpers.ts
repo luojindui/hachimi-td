@@ -65,6 +65,8 @@ export interface EngineFixture {
   rng?: () => number
   /** 是否启用波次开始的三选一（默认关闭，保持既有测试确定性） */
   drafts?: boolean
+  /** 关卡级词缀 id */
+  affixes?: string[]
 }
 
 export function makeEngine(fixture: EngineFixture): GameEngine {
@@ -79,6 +81,7 @@ export function makeEngine(fixture: EngineFixture): GameEngine {
     waveBreakSeconds: rest.waveBreakSeconds ?? 2,
     rng,
     draftsEnabled: drafts ?? false,
+    affixes: rest.affixes,
   })
 }
 

@@ -114,6 +114,8 @@ export interface WaveEntry {
   delay?: number
   /** 精英：血量 ×2.2、速度 ×0.9、赏金 ×3 */
   elite?: boolean
+  /** 本组敌人携带的词缀 id */
+  affixes?: string[]
 }
 
 export interface WaveDef {
@@ -124,6 +126,8 @@ export interface WaveDef {
   hpMul?: number
   /** 本波额外速度乘数（无尽模式爬坡用） */
   speedMul?: number
+  /** 本波敌人携带的词缀 id（无尽/每日挑战） */
+  affixes?: string[]
 }
 
 export interface LevelDef {
@@ -262,6 +266,8 @@ export interface BattleSnapshot {
   effects: readonly EffectView[]
   /** 待选择的三选一强化（非 null 时战斗暂停） */
   draft: readonly DraftOption[] | null
+  /** 当前生效的词缀（关卡级 + 波次级） */
+  affixes: string[]
   /** 地图宝箱（未开的可点击） */
   crates: readonly CrateView[]
   kills: number

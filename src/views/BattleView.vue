@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { getPet } from '@/game/data/pets'
 import { getEnemy } from '@/game/data/enemies'
+import { getAffix } from '@/game/data/affixes'
 import { getLevel } from '@/game/data/levels'
 import { getDailyChallenge, todayStr } from '@/game/daily'
 import { starsFor } from '@/game/engine/GameEngine'
@@ -142,6 +143,7 @@ const battle = useBattleEngine(() => ({
   starLevels: starLevels(),
   talentBonus: profile.talentBonus,
   bondBonus: profile.bondBonus,
+  affixes: isDaily ? challenge?.affixes : undefined,
 }))
 
 const snapshot = battle.snapshot
@@ -400,6 +402,9 @@ function goHome(): void {
       <!-- 战前情报：本关敌人构成 -->
       <div v-if="enemyPreview.length" class="card intel">
         <h3 class="intel-title">🔎 本关敌人情报</h3>
+        <div v-if="isDaily && challenge" class="intel-affixes">
+          <span v-for="a in challenge.affixes" :key="a" class="affix-tag">{{ getAffix(a).name }}：{{ getAffix(a).desc }}</span>
+        </div>
         <div class="intel-row">
           <span v-for="e in enemyPreview" :key="e.name" class="intel-item">
             <span class="intel-emoji">{{ e.emoji }}</span>
@@ -683,6 +688,17 @@ function goHome(): void {
   background: #fff;
   box-sizing: border-box;
 }
+
+.affix-tag {
+  display: inline-block;
+  margin: 0 0.4rem 0.2rem 0;
+  padding: 1px 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #b0567a;
+  background: rgba(176, 86, 122, 0.1);
+  border-radius: 4px;
+}
 </style>
 <style scoped>
 .intel {
@@ -718,5 +734,16 @@ function goHome(): void {
   border: 1px solid #e04b4b;
   border-radius: 4px;
   padding: 0 3px;
+}
+
+.affix-tag {
+  display: inline-block;
+  margin: 0 0.4rem 0.2rem 0;
+  padding: 1px 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #b0567a;
+  background: rgba(176, 86, 122, 0.1);
+  border-radius: 4px;
 }
 </style>

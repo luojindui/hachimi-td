@@ -1,5 +1,6 @@
 import { listLevels } from './data/levels'
 import { mulberry32 } from './rng'
+import { getAffix, pickAffixes } from './data/affixes'
 
 export interface DailyChallenge {
   /** YYYY-MM-DD */
@@ -11,6 +12,8 @@ export interface DailyChallenge {
   /** 限定规则：只能 N/R 宠物出战 */
   commonOnly: boolean
   catnipReward: number
+  /** 当日词缀（全部波次生效） */
+  affixes: string[]
   notes: string[]
 }
 
@@ -32,9 +35,13 @@ export function getDailyChallenge(date: string): DailyChallenge {
   const hpMul = 1.2 + Math.round(rand() * 30) / 100
   const startGold = 300 + Math.floor(rand() * 5) * 20
   const commonOnly = rand() < 0.5
+  const affixes = pickAffixes(`${date}:affix`, commonOnly ? 2 : 1)
 
   const notes = [`敌人血量 ×${hpMul.toFixed(2)}`]
   if (commonOnly) notes.push('只能出战 N/R 宠物')
+  for (const id of affixes) {
+    notes.push(getAffix(id).desc)
+  }
   notes.push(`初始资金 ${startGold}`)
 
   // 奖励随关卡分档：L1=100 ... L8=205
@@ -46,6 +53,7 @@ export function getDailyChallenge(date: string): DailyChallenge {
     hpMul,
     startGold,
     commonOnly,
+    affixes,
     catnipReward,
     notes,
   }

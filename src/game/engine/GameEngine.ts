@@ -13,6 +13,7 @@ import {
   UPGRADE_COST_FACTOR_LV2,
   UPGRADE_COST_FACTOR_LV3,
 } from '../data/balance'
+import { getAffix } from '../data/affixes'
 import type { DraftDef, TowerPath } from '../data/balance'
 import { getEnemy } from '../data/enemies'
 import { getEndlessWave } from '../data/levels'
@@ -48,6 +49,14 @@ interface EngineEnemy {
   elite: boolean
   /** 赏金乘数 */
   bountyMul: number
+  /** 词缀 id */
+  affixes: string[]
+  /** 每秒回复最大生命比例（词缀） */
+  regenPct: number
+  /** 减速抗性（词缀） */
+  frostResist: boolean
+  /** 词缀护甲加值 */
+  armorBonus: number
   /** 沿路径弧长（格） */
   dist: number
   x: number
@@ -160,6 +169,8 @@ export interface EngineOptions {
     /** 每场战斗开局小鱼干 */
     instantGold?: number
   }
+  /** 关卡级词缀（每日挑战等：对本关所有生成的敌人生效） */
+  affixes?: string[]
   /** 图鉴收集羁绊加成（与天赋独立乘区/加区） */
   bondBonus?: {
     globalAttack?: number
@@ -238,6 +249,8 @@ export class GameEngine {
   private readonly talentEliteDamage: number
   private readonly talentCritDamage: number
   private readonly talentWaveGold: number
+  private readonly levelAffixes: string[]
+  private activeWaveAffixes: string[] = []
   private readonly bondGlobalAttack: number
   private readonly bondGold: number
   private readonly bondBaseHp: number
@@ -279,6 +292,9 @@ export class GameEngine {
     this.bondGold = num(bond?.gold)
     this.bondBaseHp = Math.max(0, Math.floor(num(bond?.baseHp)))
     this.bondIceAttack = num(bond?.iceAttack)
+    this.levelAffixes = (options.affixes ?? []).filter(
+      (a) => typeof a === 'string' && a.length > 0,
+    )
     this.talentBaseHp = Math.max(
       0,
       Math.min(
@@ -576,6 +592,8 @@ export class GameEngine {
     }
     spawns.sort((a, b) => a.at - b.at)
     this.pendingSpawns = spawns
+    this.activeWaveAffixes = wave.affixes ?? []
+    this.pendingSpawns = spawns
     this.activeWave = wave
     this.activeWaveIndex = this.waveIndex
     this.activeWaveAdvance = 0
@@ -597,11 +615,21 @@ export class GameEngine {
     const wave = this.activeWave
     const eliteHpMul = elite ? ENGINE.ELITE.HP_MUL : 1
     const eliteSpeedMul = elite ? ENGINE.ELITE.SPEED_MUL : 1
+    const affixMods = this.activeEnemyAffixes()
+    const affixHpMul = affixMods.hpMul
     const hp = Math.round(
-      def.hp * this.level.hpMul * (wave?.hpMul ?? 1) * eliteHpMul,
+      def.hp *
+        this.level.hpMul *
+        (wave?.hpMul ?? 1) *
+        eliteHpMul *
+        affixHpMul,
     )
     const speed =
-      def.speed * this.level.speedMul * (wave?.speedMul ?? 1) * eliteSpeedMul
+      def.speed *
+      this.level.speedMul *
+      (wave?.speedMul ?? 1) *
+      eliteSpeedMul *
+      affixMods.speedMul
     // 初始朝向：沿路径第一段方向
     const p0 = this.level.path[0]!
     const p1 = this.level.path[1] ?? p0
@@ -611,8 +639,14 @@ export class GameEngine {
       hp,
       maxHp: hp,
       elite,
+      affixes: affixMods.ids,
+      regenPct: affixMods.regenPct,
+      frostResist: affixMods.frostResist,
+      armorBonus: affixMods.armorAdd,
       bountyMul:
-        (elite ? ENGINE.ELITE.BOUNTY_MUL : 1) * this.levelBountyScale(),
+        (elite ? ENGINE.ELITE.BOUNTY_MUL : 1) *
+        this.levelBountyScale() *
+        affixMods.bountyMul,
       speed,
       dist: 0,
       x: p0.x,
@@ -655,6 +689,10 @@ export class GameEngine {
       if (enemy.slowTimer <= 0) enemy.slowFactor = 1
       enemy.slow2Timer -= dt
       if (enemy.slow2Timer <= 0) enemy.slow2Factor = 1
+      // 再生词缀
+      if (enemy.regenPct > 0 && enemy.hp > 0) {
+        enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.maxHp * enemy.regenPct * dt)
+      }
 
       const at = pointAtDistance(this.level.path, enemy.dist)
       // 朝向随移动方向更新（渲染层翻转用）
@@ -914,7 +952,7 @@ export class GameEngine {
     if (this.buffs.crit > 0 && this.rng() < this.buffs.crit) {
       damage *= CRIT.DAMAGE + this.talentCritDamage
     }
-    const armor = Math.max(0, enemy.def.armor * armorMul)
+    const armor = Math.max(0, (enemy.def.armor + (enemy.armorBonus ?? 0)) * armorMul)
     const effective = damage * (ARMOR_K / (ARMOR_K + armor))
     enemy.hp -= effective
     // 处决者：伤害结算后生命比例低于阈值直接击杀
@@ -949,6 +987,11 @@ export class GameEngine {
   }
 
   private applySlow(enemy: EngineEnemy, spec: SlowSpec): void {
+    // 冰抗词缀：减速量减半（factor 向 1 回半）
+    const eff: SlowSpec = enemy.frostResist
+      ? { ...spec, factor: 1 - (1 - spec.factor) / 2 }
+      : spec
+    spec = eff
     // 双层减速：更强者全额生效，较弱者提供 50% 效果的第二层
     if (enemy.slowTimer > 0 && spec.factor > enemy.slowFactor) {
       // 比现有第一层弱：作为第二层记录（若比现有第二层更强）
@@ -976,6 +1019,42 @@ export class GameEngine {
       return Math.max(0.35, s1 - (1 - enemy.slow2Factor) * 0.5)
     }
     return s1
+  }
+
+  /** 当前生效的词缀修饰聚合 */
+  private activeEnemyAffixes(): {
+    ids: string[]
+    hpMul: number
+    speedMul: number
+    armorAdd: number
+    bountyMul: number
+    regenPct: number
+    frostResist: boolean
+  } {
+    const ids = [...this.levelAffixes, ...this.activeWaveAffixes]
+    const mods = {
+      ids,
+      hpMul: 1,
+      speedMul: 1,
+      armorAdd: 0,
+      bountyMul: 1,
+      regenPct: 0,
+      frostResist: false,
+    }
+    for (const id of ids) {
+      try {
+        const a = getAffix(id)
+        if (a.hpMul) mods.hpMul *= a.hpMul
+        if (a.speedMul) mods.speedMul *= a.speedMul
+        if (a.armorAdd) mods.armorAdd += a.armorAdd
+        if (a.bountyMul) mods.bountyMul *= a.bountyMul
+        if (a.regenPct) mods.regenPct += a.regenPct
+        if (a.frostResist) mods.frostResist = true
+      } catch {
+        /* 未知词缀忽略 */
+      }
+    }
+    return mods
   }
 
   /** 在场单位提供的波次清空奖励加成（取最大，不叠加） */
@@ -1249,6 +1328,7 @@ export class GameEngine {
       flash: e.flashUntil > this.now,
       facing: e.facing,
       elite: e.elite,
+      affixes: e.affixes,
     }))
     const towers: TowerView[] = this.towers
       .filter((t): t is EngineTower => t !== undefined)
@@ -1304,6 +1384,7 @@ export class GameEngine {
       waveIndex: this.getCurrentWaveIndex(),
       waveTotal: this.getWaveTotal(),
       waveInProgress: this.phase === 'active',
+      affixes: [...this.levelAffixes, ...this.activeWaveAffixes],
       nextWaveCountdown:
         this.phase === 'countdown' ? Math.max(0, this.countdown) : 0,
       speed: this.speedMultiplier,
