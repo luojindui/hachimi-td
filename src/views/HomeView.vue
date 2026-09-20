@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import { listLevels } from '@/game/data/levels'
 import { getDailyChallenge, todayStr } from '@/game/daily'
@@ -10,6 +10,12 @@ import { assets } from '@/render/registry'
 const profile = useProfileStore()
 const A = assets()
 const daily = getDailyChallenge(todayStr())
+const ONBOARD_KEY = 'hachimi-td:onboarded'
+const showOnboard = ref(!localStorage.getItem(ONBOARD_KEY))
+function dismissOnboard(): void {
+  localStorage.setItem(ONBOARD_KEY, '1')
+  showOnboard.value = false
+}
 const collected = profile.pets.length
 const PET_TOTAL = PET_LIST.length
 const dailyDone = computed(
@@ -81,6 +87,16 @@ function starsText(id: string): string {
       ♾️ 无尽模式 · 星空粮仓
       <span class="endless-best">最佳纪录：第 {{ profile.endless.bestWave }} 波</span>
     </RouterLink>
+
+    <div v-if="showOnboard" class="onboard card" role="dialog" aria-label="新手引导">
+      <h2 class="onboard-title">🐺 欢迎来到哈基米塔防！</h2>
+      <p class="onboard-line">🐱 编队出战的猫狗守卫 <strong>粮仓</strong>，别让老鼠偷粮</p>
+      <p class="onboard-line">🐟 <strong>小鱼干</strong>：建造/升级宠物，通关与击杀获得</p>
+      <p class="onboard-line">🌿 <strong>猫薄荷</strong>：孵蛋抽卡 / 升星 / 天赋（主页孵蛋）</p>
+      <p class="onboard-line">⭐ <strong>星数</strong>：通关星级累计，解锁天赋树</p>
+      <p class="onboard-line">🎯 三选一强化每波开始时出现，选中前战斗暂停</p>
+      <button class="btn btn-primary" @click="dismissOnboard">开始游戏！</button>
+    </div>
 
     <RouterLink to="/battle/daily" class="daily card">
       📅 每日挑战
@@ -231,5 +247,30 @@ function starsText(id: string): string {
 .endless-best {
   font-size: 0.8rem;
   color: var(--c-ink-soft);
+}
+</style>
+<style scoped>
+.onboard {
+  border: 2px solid var(--c-primary, #f0932b);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.onboard-title {
+  margin: 0 0 0.2rem;
+  font-size: 1.05rem;
+}
+
+.onboard-line {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--c-ink-soft, #8a8f98);
+}
+
+.onboard .btn {
+  margin-top: 0.4rem;
+  align-self: flex-end;
 }
 </style>
