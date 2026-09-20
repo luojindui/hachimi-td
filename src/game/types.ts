@@ -205,6 +205,8 @@ export interface DraftOption {
   id: string
   name: string
   desc: string
+  /** 稀有度（金/蓝/白分层展示） */
+  rarity: 'common' | 'rare' | 'epic'
 }
 
 export interface EffectView {

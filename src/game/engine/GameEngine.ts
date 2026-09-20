@@ -4,6 +4,7 @@ import {
   DRAFT_COUNT,
   TOWER_BRANCHES,
   DRAFT_POOL,
+  DRAFT_RARITY_WEIGHTS,
   ENGINE,
   LINEUP_SIZE,
   SELL_REFUND_RATIO,
@@ -177,10 +178,23 @@ interface DraftBuffs {
   gold: number
   splashBonus: number
   crit: number
+  /** 处决阈值：敌人生命比例低于此值直接击杀（0 = 未获得） */
+  execute: number
+  /** 连锁闪电：命中后向最近另一敌人弹出该比例伤害（0 = 未获得） */
+  chain: number
 }
 
 function emptyBuffs(): DraftBuffs {
-  return { attack: 0, intervalMul: 1, rangeMul: 0, gold: 0, splashBonus: 0, crit: 0 }
+  return {
+    attack: 0,
+    intervalMul: 1,
+    rangeMul: 0,
+    gold: 0,
+    splashBonus: 0,
+    crit: 0,
+    execute: 0,
+    chain: 0,
+  }
 }
 
 function clampStars(stars: number | undefined): number {
@@ -844,6 +858,28 @@ export class GameEngine {
   private impact(proj: EngineProjectile, target: EngineEnemy): void {
     this.addEffect('hit', target.x, target.y)
     this.applyDamage(target, proj.damage, proj.armorMul)
+
+    // 连锁闪电：向最近的另一个可命中敌人弹出 50% 伤害
+    if (this.buffs.chain > 0) {
+      let best: EngineEnemy | null = null
+      let bestDist = Infinity
+      const range = 1.6
+      for (const other of this.enemies) {
+        if (other.uid === target.uid || other.hp <= 0) continue
+        if (!this.canHit(proj.targets, other.def.flying)) continue
+        const dx = other.x - target.x
+        const dy = other.y - target.y
+        const d2 = dx * dx + dy * dy
+        if (d2 < bestDist && d2 <= range * range) {
+          bestDist = d2
+          best = other
+        }
+      }
+      if (best) {
+        this.addEffect('hit', best.x, best.y)
+        this.applyDamage(best, proj.damage * this.buffs.chain, proj.armorMul)
+      }
+    }
     if (proj.slow) this.applySlow(target, proj.slow)
 
     if (proj.splash > 0) {
@@ -878,6 +914,14 @@ export class GameEngine {
     const armor = Math.max(0, enemy.def.armor * armorMul)
     const effective = damage * (ARMOR_K / (ARMOR_K + armor))
     enemy.hp -= effective
+    // 处决者：伤害结算后生命比例低于阈值直接击杀
+    if (
+      this.buffs.execute > 0 &&
+      enemy.hp > 0 &&
+      enemy.hp <= enemy.maxHp * this.buffs.execute
+    ) {
+      enemy.hp = 0
+    }
     enemy.flashUntil = this.now + 0.12
     if (enemy.hp > 0) return
 
@@ -1095,7 +1139,17 @@ export class GameEngine {
     const pool = [...DRAFT_POOL]
     const picks: DraftDef[] = []
     for (let i = 0; i < DRAFT_COUNT && pool.length > 0; i++) {
-      const idx = Math.floor(this.rng() * pool.length)
+      // 加权采样：common 3 / rare 2 / epic 1（稀有度分层）
+      const total = pool.reduce((sum, d) => sum + DRAFT_RARITY_WEIGHTS[d.rarity], 0)
+      let roll = this.rng() * total
+      let idx = pool.length - 1
+      for (let j = 0; j < pool.length; j++) {
+        roll -= DRAFT_RARITY_WEIGHTS[pool[j]!.rarity]
+        if (roll < 0) {
+          idx = j
+          break
+        }
+      }
       picks.push(pool.splice(idx, 1)[0]!)
     }
     this.draftPool = picks
@@ -1103,6 +1157,7 @@ export class GameEngine {
       id: p.id,
       name: p.name,
       desc: p.desc,
+      rarity: p.rarity,
     }))
   }
 
@@ -1151,6 +1206,12 @@ export class GameEngine {
         break
       case 'instantGold':
         this.gold += opt.value
+        break
+      case 'execute':
+        this.buffs.execute = opt.value
+        break
+      case 'chain':
+        this.buffs.chain = opt.value
         break
       default: {
         // 穷举守卫：新增 DraftKind 时漏写 case 会在编译期报错

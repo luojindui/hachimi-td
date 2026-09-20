@@ -7,7 +7,6 @@ import { advance, makeEngine, makeWave, STEP } from './helpers'
 /** 固定 rng：总是取第一个可选项，便于确定性断言 */
 const FIRST = () => 0
 /** 固定 rng：总是取最后一个可选项 */
-const LAST = () => 0.99
 
 const cat = getPet('tianyuan-cat')
 
@@ -71,12 +70,11 @@ describe('肉鸽三选一（波次开始时触发）', () => {
         makeWave([{ enemyId: 'mouse', count: 1, interval: 1 }], 40),
       ],
       firstWaveCountdown: 0.1,
-      rng: LAST,
+      rng: () => 0.8, // 加权采样：economy → fortify → execute
       drafts: true,
     })
     advance(engine, 1)
     const options = engine.getSnapshot().draft!
-    // LAST rng（0.99）依次抽走池尾：economy / fortify / critEdge
     expect(options.map((o) => o.id)).toEqual(['economy', 'fortify', 'critEdge'])
     engine.pickDraft(1) // fortify
     expect(engine.getSnapshot().baseMaxHp).toBe(25)
@@ -94,7 +92,7 @@ describe('肉鸽三选一（波次开始时触发）', () => {
         makeWave([{ enemyId: 'mouse', count: 1, interval: 1 }], 40),
       ],
       firstWaveCountdown: 0.1,
-      rng: LAST,
+      rng: () => 0.8, // 首选项 = economy
       drafts: true,
     })
     engine.placeTower(1, cat.id)
@@ -250,8 +248,8 @@ describe('每种强化的行为断言', () => {
 
   it('critEdge：命中按概率双倍伤害（护甲前乘算）', () => {
     const sniper30 = makePet({ id: 't-crit-sniper', attack: 30, attackInterval: 10, range: 2.5 })
-    // rng 队列：0.7 先抽中 critEdge（池 idx 5），后续 0 → 每次伤害判定都暴击
-    const seq = [0.7, 0, 0, 0]
+    // rng 队列：0.55 先抽中 critEdge，后续 0 → 每次伤害判定都暴击
+    const seq = [0.55, 0, 0, 0]
     const engine = makeEngine({
       lineup: [sniper30],
       waves: [makeWave([{ enemyId: 'shield', count: 1, interval: 1 }], 0)],
@@ -320,6 +318,55 @@ describe('每种强化的行为断言', () => {
     engine.pickDraft(options2.findIndex((o) => o.id === 'attackPlus'))
     // 加法叠加：24 × (1 + 0.2 + 0.2) = 33.6
     expect(engine.towerStats(1)!.attack).toBeCloseTo(24 * 1.4, 6)
+  })
+
+  it('处决者：敌人生命低于 15% 直接击杀', () => {
+    const heavy = makePet({ id: 't-exec', attack: 60, attackInterval: 10, range: 2.5 })
+    // rng 队列：抽中 executeEdge（权重 1，需要 roll 落在最后 1/22 ≈ [0.9545,1)）
+    const seq = [0.96, 0.96, 0.96]
+    const engine = makeEngine({
+      lineup: [heavy],
+      waves: [makeWave([{ enemyId: 'shield', count: 1, interval: 1 }], 0)],
+      firstWaveCountdown: 0.1,
+      rng: () => seq.shift() ?? 0,
+      drafts: true,
+    })
+    engine.placeTower(1, heavy.id)
+    advance(engine, 1)
+    const options = engine.getSnapshot().draft!
+    const execIdx = options.findIndex((o) => o.id === 'executeEdge')
+    expect(execIdx).toBeGreaterThanOrEqual(0)
+    engine.pickDraft(execIdx)
+    // 盾甲鼠 95 血：首击 60×100/150 = 40 → 55/95 = 58% 未达阈值
+    advance(engine, 4)
+    expect(engine.getSnapshot().enemies[0]!.hp).toBeCloseTo(55, 0)
+    // 第二击 40 → 15/95 = 15.8%... 第三击触发处决：95 血只受 3 击
+    advance(engine, 11)
+    expect(engine.getSnapshot().enemies.length).toBe(0)
+  })
+
+  it('连锁闪电：命中后向最近敌人弹出 50% 伤害', () => {
+    // 两只并排走的小鼠：第一只被击中时第二只吃连锁
+    const seq = [0.96, 0.96, 0.96]
+    const heavy = makePet({ id: 't-chain', attack: 50, attackInterval: 10, range: 2.5 })
+    const engine = makeEngine({
+      lineup: [heavy],
+      waves: [makeWave([{ enemyId: 'mouse', count: 2, interval: 0.2 }], 0)],
+      firstWaveCountdown: 0.1,
+      rng: () => seq.shift() ?? 0,
+      drafts: true,
+    })
+    engine.placeTower(1, heavy.id)
+    advance(engine, 1)
+    const options = engine.getSnapshot().draft!
+    const chainIdx = options.findIndex((o) => o.id === 'chainLightning')
+    expect(chainIdx).toBeGreaterThanOrEqual(0)
+    engine.pickDraft(chainIdx)
+    advance(engine, 4)
+    const enemies = engine.getSnapshot().enemies
+    // 主目标 55 血被打 33（50×100/150），连锁 16.5 → 两只都受伤
+    expect(enemies.length).toBe(2)
+    expect(enemies.every((e) => e.hp < 55)).toBe(true)
   })
 
   it('非法索引抛错', () => {

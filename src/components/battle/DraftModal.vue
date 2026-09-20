@@ -24,10 +24,13 @@ const emit = defineEmits<{
         <button
           v-for="(opt, i) in draft"
           :key="opt.id"
-          class="draft-option"
+          :class="['draft-option', `rarity-${opt.rarity}`]"
           :style="{ animationDelay: `${i * 0.12}s` }"
           @click="emit('pick', i)"
         >
+          <span class="draft-rarity">{{
+            opt.rarity === 'epic' ? '★ 金色' : opt.rarity === 'rare' ? '◆ 稀有' : '· 常见'
+          }}</span>
           <span class="draft-opt-name">{{ opt.name }}</span>
           <span class="draft-opt-desc">{{ opt.desc }}</span>
         </button>
@@ -136,3 +139,27 @@ const emit = defineEmits<{
   text-align: center;
 }
 </style>
+/* 稀有度分层 */
+.draft-option.rarity-epic {
+  border-color: var(--c-rarity-ssr, #f6b352);
+  background: linear-gradient(160deg, rgba(246, 179, 82, 0.12), rgba(255, 255, 255, 0.9));
+}
+
+.draft-option.rarity-rare {
+  border-color: #6ea8dc;
+}
+
+.draft-rarity {
+  align-self: flex-start;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--c-ink-soft, #8a8f98);
+}
+
+.draft-option.rarity-epic .draft-rarity {
+  color: var(--c-rarity-ssr, #f6b352);
+}
+
+.draft-option.rarity-rare .draft-rarity {
+  color: #6ea8dc;
+}

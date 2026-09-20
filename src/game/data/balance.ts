@@ -131,6 +131,19 @@ export type DraftKind =
   | 'crit'
   | 'fortify'
   | 'instantGold'
+  /** 金色机制：处决低血量敌人 */
+  | 'execute'
+  /** 金色机制：命中后连锁闪电 */
+  | 'chain'
+
+export type DraftRarity = 'common' | 'rare' | 'epic'
+
+/** 各稀有度抽取权重（common 55% / rare 36% / epic 9%） */
+export const DRAFT_RARITY_WEIGHTS: Record<DraftRarity, number> = {
+  common: 3,
+  rare: 2,
+  epic: 1,
+}
 
 export interface DraftDef {
   id: string
@@ -138,18 +151,21 @@ export interface DraftDef {
   desc: string
   kind: DraftKind
   value: number
+  rarity: DraftRarity
 }
 
-/** 波次清空后的三选一强化池（随机抽 3 个不重复） */
+/** 波次开始时的三选一强化池（随机抽 3 个不重复，按权重分层） */
 export const DRAFT_POOL: readonly DraftDef[] = [
-  { id: 'attackPlus', name: '猫爪磨亮', desc: '全体攻击 +20%', kind: 'attack', value: 0.2 },
-  { id: 'rapidFire', name: '闪电反射', desc: '全体攻速 +18%', kind: 'interval', value: 0.8475 },
-  { id: 'longRange', name: '千里眼', desc: '全体射程 +15%', kind: 'range', value: 0.15 },
-  { id: 'bountyHunter', name: '赏金猎人', desc: '击杀赏金 +25%', kind: 'gold', value: 0.25 },
-  { id: 'bigSplash', name: '范围扩张', desc: '溅射宠物的溅射半径 +0.6 格', kind: 'splash', value: 0.6 },
-  { id: 'critEdge', name: '会心一击', desc: '12% 概率造成 2 倍伤害', kind: 'crit', value: 0.12 },
-  { id: 'fortify', name: '粮仓加固', desc: '粮仓上限 +5 并立即修复 5', kind: 'fortify', value: 5 },
-  { id: 'economy', name: '战前集资', desc: '立即获得 150 小鱼干', kind: 'instantGold', value: 150 },
+  { id: 'attackPlus', name: '猫爪磨亮', desc: '全体攻击 +20%', kind: 'attack', value: 0.2, rarity: 'common' },
+  { id: 'rapidFire', name: '闪电反射', desc: '全体攻速 +18%', kind: 'interval', value: 0.8475, rarity: 'rare' },
+  { id: 'longRange', name: '千里眼', desc: '全体射程 +15%', kind: 'range', value: 0.15, rarity: 'common' },
+  { id: 'bountyHunter', name: '赏金猎人', desc: '击杀赏金 +25%', kind: 'gold', value: 0.25, rarity: 'rare' },
+  { id: 'bigSplash', name: '范围扩张', desc: '溅射宠物的溅射半径 +0.6 格', kind: 'splash', value: 0.6, rarity: 'rare' },
+  { id: 'critEdge', name: '会心一击', desc: '12% 概率造成 2 倍伤害', kind: 'crit', value: 0.12, rarity: 'rare' },
+  { id: 'fortify', name: '粮仓加固', desc: '粮仓上限 +5 并立即修复 5', kind: 'fortify', value: 5, rarity: 'common' },
+  { id: 'economy', name: '战前集资', desc: '立即获得 150 小鱼干', kind: 'instantGold', value: 150, rarity: 'common' },
+  { id: 'executeEdge', name: '处决者', desc: '敌人生命低于 15% 时直接处决', kind: 'execute', value: 0.15, rarity: 'epic' },
+  { id: 'chainLightning', name: '连锁闪电', desc: '命中后向最近的另一个敌人弹出 50% 伤害', kind: 'chain', value: 0.5, rarity: 'epic' },
 ]
 
 /** 每次三选一给出的选项数 */
