@@ -49,6 +49,7 @@ function waveText(snap: BattleSnapshot): string {
         @click="emit('callNext')"
       >
         召唤下一波（{{ Math.ceil(props.snapshot.nextWaveCountdown) }}s）
+        <span class="call-tip">提前召唤只拿 50% 奖励</span>
       </button>
       <span v-else-if="props.snapshot.draft" class="wave-live">选择强化中…</span>
       <span v-else-if="props.snapshot.outcome === 'ongoing'" class="wave-live">战斗中…</span>
@@ -138,5 +139,12 @@ function waveText(snap: BattleSnapshot): string {
 .wave-live {
   color: var(--c-ink-soft);
   font-size: 0.85rem;
+}
+</style>
+<style scoped>
+.call-tip {
+  display: block;
+  font-size: 0.6rem;
+  opacity: 0.8;
 }
 </style>

@@ -135,7 +135,7 @@ function petName(petId: string): string {
             :disabled="props.snapshot.gold < props.upgradeCost"
             @click="emit('upgrade', 'quick')"
           >
-            速攻（{{ props.upgradeCost }}🐟）
+            速攻<span class="branch-tip">攻速流·射程+</span>（{{ props.upgradeCost }}🐟）
           </button>
           <button
             v-if="(selectedTower?.level ?? 1) === 1"
@@ -143,7 +143,7 @@ function petName(petId: string): string {
             :disabled="props.snapshot.gold < props.upgradeCost"
             @click="emit('upgrade', 'heavy')"
           >
-            重击（{{ props.upgradeCost }}🐟）
+            重击<span class="branch-tip">破甲50%</span>（{{ props.upgradeCost }}🐟）
           </button>
           <button
             v-if="(selectedTower?.level ?? 1) !== 1"
@@ -285,5 +285,13 @@ function petName(petId: string): string {
   align-self: center;
   color: var(--c-ink-soft);
   font-weight: 600;
+}
+</style>
+<style scoped>
+.branch-tip {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 600;
+  opacity: 0.75;
 }
 </style>

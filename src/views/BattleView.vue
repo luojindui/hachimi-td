@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getPet } from '@/game/data/pets'
+import { getEnemy } from '@/game/data/enemies'
 import { getLevel } from '@/game/data/levels'
 import { getDailyChallenge, todayStr } from '@/game/daily'
 import { starsFor } from '@/game/engine/GameEngine'
@@ -28,6 +29,26 @@ const A = assets()
 const isDaily =
   route.params.levelId === 'daily' || route.query.daily === '1'
 const challenge = isDaily ? getDailyChallenge(todayStr()) : null
+
+/** 战前情报：本关敌人构成（去重聚合） */
+const enemyPreview = computed(() => {
+  const A = assets()
+  const counter = new Map<string, { emoji: string; name: string; count: number; boss: boolean }>()
+  for (const wave of level.waves) {
+    for (const entry of wave.entries) {
+      const def = getEnemy(entry.enemyId)
+      const cur = counter.get(entry.enemyId) ?? {
+        emoji: A.enemyVisual(entry.enemyId).emoji,
+        name: def.name,
+        count: 0,
+        boss: def.name.includes('鼠王'),
+      }
+      cur.count += entry.count
+      counter.set(entry.enemyId, cur)
+    }
+  }
+  return [...counter.values()]
+})
 
 function resolveLevel(): LevelDef {
   try {
@@ -265,6 +286,15 @@ const lineupDefs = computed(() =>
   battle.engine.value ? battle.engine.value.getLineup() : [],
 )
 
+const selectedRangeRing = computed(() => {
+  void snapshot.value
+  if (selectedSlot.value === null || !engine.value) return null
+  const tower = snapshot.value?.towers.find((t) => t.slotIndex === selectedSlot.value)
+  const stats = engine.value.towerStats(selectedSlot.value)
+  if (!tower || !stats) return null
+  return { x: tower.x * 64 + 32, y: tower.y * 64 + 32, r: stats.range * 64 }
+})
+
 const selectedTowerStats = computed(() => {
   // 依赖快照：升级/出售/金币变化都会触发重算（引擎内部变更 Vue 无法追踪）
   void snapshot.value
@@ -294,12 +324,18 @@ const settlement = ref<{
   waveReached?: number
 } | null>(null)
 
-/** 任一模态弹层打开时，战斗主体转为 inert（阻断键盘穿透） */
+const nextLevelLabel = computed(() => {
+  if (isDaily || isEndless) return ''
+  const unlocked = profile.unlockedLevelIds
+  const idx = unlocked.indexOf(String(route.params.levelId))
+  if (idx >= 0 && idx + 1 < unlocked.length) return '下一关'
+  return ''
+})
+
+/** 任一模态弹层打开时，战斗主体转为 inert（阻断键盘穿透）。
+ * 三选一排除：战斗冻结期间允许继续放塔/调整阵型（策略性等待） */
 const anyModalOpen = computed(
-  () =>
-    snapshot.value?.draft != null ||
-    settlement.value !== null ||
-    confirmExit.value,
+  () => settlement.value !== null || confirmExit.value,
 )
 
 watch(
@@ -341,6 +377,16 @@ function retry(): void {
   battle.start()
 }
 
+function goNextLevel(): void {
+  const unlocked = profile.unlockedLevelIds
+  const idx = unlocked.indexOf(String(route.params.levelId))
+  if (idx >= 0 && idx + 1 < unlocked.length) {
+    router.push(`/battle/${unlocked[idx + 1]}`)
+  } else {
+    router.push('/')
+  }
+}
+
 function goHome(): void {
   router.push('/')
 }
@@ -351,6 +397,18 @@ function goHome(): void {
     <!-- 战前编队 -->
     <section v-if="!battleStarted" class="prep card">
       <h2 class="prep-title">{{ level.name }} · 出战编队</h2>
+      <!-- 战前情报：本关敌人构成 -->
+      <div v-if="enemyPreview.length" class="card intel">
+        <h3 class="intel-title">🔎 本关敌人情报</h3>
+        <div class="intel-row">
+          <span v-for="e in enemyPreview" :key="e.name" class="intel-item">
+            <span class="intel-emoji">{{ e.emoji }}</span>
+            {{ e.name }} ×{{ e.count }}
+            <span v-if="e.boss" class="intel-boss">BOSS</span>
+          </span>
+        </div>
+      </div>
+
       <LineupPicker
         v-model="pickedIds"
         :owned="profile.pets"
@@ -384,6 +442,7 @@ function goHome(): void {
         :level="level"
         :snapshot="snapshot"
         :highlight="dragHighlight"
+        :range-ring="selectedRangeRing"
         @slot-click="onSlotClick"
         @crate-click="onCrateClick"
       />
@@ -442,8 +501,10 @@ function goHome(): void {
         v-if="settlement"
         v-bind="settlement"
         :is-endless="isEndless"
+        :next-label="nextLevelLabel"
         @retry="retry"
         @home="goHome"
+        @next="goNextLevel"
       />
     </template>
   </main>
@@ -621,5 +682,41 @@ function goHome(): void {
   font-size: 1.7rem;
   background: #fff;
   box-sizing: border-box;
+}
+</style>
+<style scoped>
+.intel {
+  padding: 0.6rem 0.8rem;
+}
+
+.intel-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+}
+
+.intel-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.intel-item {
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.intel-emoji {
+  font-size: 1rem;
+}
+
+.intel-boss {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #e04b4b;
+  border: 1px solid #e04b4b;
+  border-radius: 4px;
+  padding: 0 3px;
 }
 </style>

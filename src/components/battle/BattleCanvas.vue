@@ -11,13 +11,15 @@ import {
   renderStaticLayer,
   slotIndexAt,
 } from '@/render/battleRenderer'
-import type { RenderHighlight } from '@/render/battleRenderer'
+import type { RangeRing, RenderHighlight } from '@/render/battleRenderer'
 
 const props = defineProps<{
   level: LevelDef
   snapshot: BattleSnapshot | null
   /** 拖拽宠物悬停的建造格高亮 */
   highlight?: RenderHighlight | null
+  /** 选中塔的射程圈（逻辑坐标） */
+  rangeRing?: RangeRing | null
 }>()
 
 const emit = defineEmits<{
@@ -64,7 +66,7 @@ watchEffect(() => {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   const bg = ensureStatic(props.level, dpr)
   if (bg) ctx.drawImage(bg, 0, 0, width, height)
-  renderDynamic(ctx, snap, props.level, props.highlight ?? null, performance.now() / 1000)
+  renderDynamic(ctx, snap, props.level, props.highlight ?? null, performance.now() / 1000, props.rangeRing ?? null)
 })
 
 /** 供拖拽逻辑读取画布元素做命中检测 */

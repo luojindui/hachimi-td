@@ -41,6 +41,8 @@ const emit = defineEmits<{
 
 <style scoped>
 .draft-mask {
+  pointer-events: none;
+
   position: fixed;
   inset: 0;
   background: rgba(58, 44, 90, 0.55);
@@ -53,6 +55,8 @@ const emit = defineEmits<{
 }
 
 .draft {
+  pointer-events: auto;
+
   width: min(34rem, 100%);
   margin: auto;
   padding: 1.2rem;

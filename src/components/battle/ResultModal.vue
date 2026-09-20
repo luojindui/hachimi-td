@@ -9,11 +9,14 @@ const props = defineProps<{
   kills: number
   /** 无尽模式：本局到达的波数 */
   waveReached?: number
+  /** 下一关跳转文案（空 = 不显示） */
+  nextLabel?: string
 }>()
 
 const emit = defineEmits<{
   retry: []
   home: []
+  next: []
 }>()
 
 const A = assets()
@@ -47,7 +50,14 @@ const A = assets()
       </p>
 
       <div class="actions">
-        <button class="btn btn-primary" @click="emit('retry')">再来一局</button>
+        <button
+      v-if="props.nextLabel"
+      class="btn btn-primary"
+      @click="emit('next')"
+    >
+      {{ props.nextLabel }} →
+    </button>
+<button class="btn btn-primary" @click="emit('retry')">再来一局</button>
         <button class="btn btn-ghost" @click="emit('home')">返回主页</button>
       </div>
     </div>

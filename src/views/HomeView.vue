@@ -3,12 +3,15 @@ import { computed, onMounted } from 'vue'
 
 import { listLevels } from '@/game/data/levels'
 import { getDailyChallenge, todayStr } from '@/game/daily'
+import { PET_LIST } from '@/game/data/pets'
 import { useProfileStore } from '@/stores/profile'
 import { assets } from '@/render/registry'
 
 const profile = useProfileStore()
 const A = assets()
 const daily = getDailyChallenge(todayStr())
+const collected = profile.pets.length
+const PET_TOTAL = PET_LIST.length
 const dailyDone = computed(
   () => profile.daily.lastClaimDate === daily.date,
 )
@@ -87,7 +90,9 @@ function starsText(id: string): string {
     </RouterLink>
 
     <section class="entries">
-      <RouterLink to="/dex" class="btn btn-primary">📖 图鉴</RouterLink>
+      <RouterLink to="/dex" class="btn btn-primary" :title="`宠物收集进度：${collected}/${PET_TOTAL}`">
+        📖 图鉴 {{ collected }}/{{ PET_TOTAL }}
+      </RouterLink>
       <RouterLink to="/hatch" class="btn btn-primary">🥚 孵蛋</RouterLink>
       <RouterLink to="/talents" class="btn btn-primary">⭐ 天赋</RouterLink>
       <RouterLink to="/settings" class="btn btn-ghost">⚙️ 设置</RouterLink>

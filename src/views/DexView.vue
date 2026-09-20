@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import { LINEUP_SIZE } from '@/game/data/balance'
 import { BOND_LIST, evaluateBonds } from '@/game/data/bonds'
+import { ENEMY_LIST } from '@/game/data/enemies'
 import { getPet, PET_LIST } from '@/game/data/pets'
 import type { PetDef } from '@/game/types'
 import { useProfileStore } from '@/stores/profile'
@@ -14,6 +15,18 @@ const A = assets()
 const activeBonds = evaluateBonds(
   profile.pets.map((p) => getPet(p.id)),
 ).active
+
+/** 敌方档案：全部敌人基础数据 */
+const enemyDex = ENEMY_LIST.map((e) => ({
+  emoji: assets().enemyVisual(e.id).emoji,
+  name: e.name,
+  hp: e.hp,
+  speed: e.speed,
+  armor: e.armor,
+  bounty: e.bounty,
+  flying: e.flying,
+  boss: e.boss,
+}))
 
 const selectedId = ref<string | null>(null)
 const selected = computed<PetDef | null>(() =>
@@ -175,6 +188,20 @@ function targetsText(pet: PetDef): string {
       </template>
       <p v-else class="own-line">获得后可编入出战队伍</p>
     
+    <section class="card enemy-dex">
+      <h2 class="section-title">🐭 敌方档案</h2>
+      <div v-for="e in enemyDex" :key="e.name" class="enemy-row">
+        <span class="enemy-emoji">{{ e.emoji }}</span>
+        <span class="enemy-name">{{ e.name }}</span>
+        <span class="enemy-stat">❤ {{ e.hp }}</span>
+        <span class="enemy-stat">👣 {{ e.speed }}</span>
+        <span class="enemy-stat">🛡 {{ e.armor }}</span>
+        <span class="enemy-stat">💰 {{ e.bounty }}</span>
+        <span v-if="e.flying" class="enemy-tag">飞行</span>
+        <span v-if="e.boss" class="enemy-tag boss">BOSS</span>
+      </div>
+    </section>
+
     <section class="card bonds">
       <h2 class="section-title">🔗 收集羁绊</h2>
       <div
@@ -351,6 +378,55 @@ function targetsText(pet: PetDef): string {
 }
 </style>
 <style scoped>
+.enemy-dex {
+  margin-top: 0.8rem;
+}
+
+.enemy-dex .section-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.enemy-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.2rem;
+  font-size: 0.8rem;
+  border-bottom: 1px dashed var(--c-line, rgba(0,0,0,0.08));
+}
+
+.enemy-row:last-child {
+  border-bottom: none;
+}
+
+.enemy-emoji {
+  font-size: 1.1rem;
+}
+
+.enemy-name {
+  font-weight: 700;
+  min-width: 3.5rem;
+}
+
+.enemy-stat {
+  color: var(--c-ink-soft, #8a8f98);
+}
+
+.enemy-tag {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #6ea8dc;
+  border: 1px solid #6ea8dc;
+  border-radius: 4px;
+  padding: 0 3px;
+}
+
+.enemy-tag.boss {
+  color: #e04b4b;
+  border-color: #e04b4b;
+}
+
 .bonds {
   margin-top: 0.8rem;
 }

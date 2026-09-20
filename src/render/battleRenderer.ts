@@ -238,12 +238,19 @@ export function renderStaticLayer(
  * 动态层：建造格/宝箱/塔/敌人/弹道/特效/漂浮文字。
  * 每帧调用；不负责清屏（由静态层垫底）。
  */
+export interface RangeRing {
+  x: number
+  y: number
+  r: number
+}
+
 export function renderDynamic(
   ctx: CanvasRenderingContext2D,
   snapshot: BattleSnapshot,
   level: LevelDef,
   highlight?: RenderHighlight | null,
   animTime = 0,
+  rangeRing?: RangeRing | null,
 ): void {
   const A = assets()
   const tiles = A.tiles(level.theme)
@@ -270,6 +277,20 @@ export function renderDynamic(
     ctx.stroke()
   })
   ctx.setLineDash([])
+
+  /* ---- 选中塔射程圈 ---- */
+  if (rangeRing) {
+    ctx.save()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.10)'
+    ctx.beginPath()
+    ctx.arc(rangeRing.x, rangeRing.y, rangeRing.r, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([5, 5])
+    ctx.stroke()
+    ctx.restore()
+  }
 
   /* ---- 拖拽悬停高亮 ---- */
   if (highlight && !occupied.has(highlight.slotIndex)) {
@@ -456,16 +477,23 @@ export function renderDynamic(
       emoji(ctx, A.icon('speed'), cx + size + 6, cy - size, 14)
     }
 
-    // 血条
+    // 血条（Boss 加宽并带名签）
     const hpRatio = enemy.maxHp > 0 ? enemy.hp / enemy.maxHp : 0
-    const barW = enemy.boss ? 44 : 32
-    const barY = cy - size - 10
+    const barW = enemy.boss ? 72 : 32
+    const barH = enemy.boss ? 9 : 6
+    const barY = cy - size - (enemy.boss ? 20 : 10)
     ctx.fillStyle = 'rgba(0,0,0,0.45)'
-    roundedRect(ctx, cx - barW / 2, barY, barW, 6, 3)
+    roundedRect(ctx, cx - barW / 2, barY, barW, barH, 3)
     ctx.fill()
+    if (enemy.boss) {
+      ctx.fillStyle = '#ffd7d7'
+      ctx.font = 'bold 9px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('鼠王', cx, barY - 3)
+    }
     ctx.fillStyle = hpRatio > 0.5 ? '#58b368' : hpRatio > 0.25 ? '#f0a24a' : '#e04b4b'
     if (hpRatio > 0) {
-      roundedRect(ctx, cx - barW / 2, barY, Math.max(4, barW * hpRatio), 6, 3)
+      roundedRect(ctx, cx - barW / 2, barY, Math.max(4, barW * hpRatio), barH, 3)
       ctx.fill()
     }
   }
