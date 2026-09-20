@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { useRoute } from 'vue-router'
 import { useProfileStore } from '@/stores/profile'
 
 // 应用外壳：初始化存档 + 路由出口
 const profile = useProfileStore()
 profile.init()
+// 路径全量作为 key：同路由不同参数（如 /battle/1 → /battle/2）强制重挂载，
+// 保证 BattleView 等在挂载期固化路由参数的视图完整重建
+const route = useRoute()
 </script>
 
 <template>
@@ -14,7 +18,7 @@ profile.init()
     <div v-else-if="profile.recoveredFromCorruption" class="storage-warn warn">
       检测到存档损坏，已自动开启新档（损坏档已备份）
     </div>
-    <RouterView />
+    <RouterView :key="route.fullPath" />
   </div>
 </template>
 

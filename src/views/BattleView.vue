@@ -83,7 +83,15 @@ watch(
   () => {
     if (!profile.initialized) return
     const owned = new Set(profile.ownedPetIds)
-    pickedIds.value = profile.lineup.filter((id) => owned.has(id))
+    let ids = profile.lineup.filter((id) => owned.has(id))
+    // 每日 commonOnly：初始阵容直接过滤掉非法稀有度（而不是让玩家点了开始才发现）
+    if (isDaily && challenge?.commonOnly) {
+      ids = ids.filter((id) => {
+        const r = getPet(id).rarity
+        return r === 'N' || r === 'R'
+      })
+    }
+    pickedIds.value = ids
   },
   { immediate: true },
 )
@@ -100,12 +108,17 @@ function starLevels(): Record<string, number> {
   return map
 }
 
+const dailyLineupInvalid = computed(() => {
+  if (!(isDaily && challenge?.commonOnly)) return false
+  return pickedIds.value.some((id) => {
+    const r = getPet(id).rarity
+    return r === 'SR' || r === 'SSR'
+  })
+})
+
 function confirmLineup(): void {
   if (pickedIds.value.length === 0) return
-  if (isDaily && challenge?.commonOnly) {
-    const pet = pickedIds.value.map((id) => getPet(id))
-    if (pet.some((p) => p.rarity === 'SR' || p.rarity === 'SSR')) return
-  }
+  if (dailyLineupInvalid.value) return
   profile.setLineup(pickedIds.value)
   battleStarted.value = true
   battle.start()
@@ -476,10 +489,16 @@ function goHome(): void {
         <button class="btn btn-ghost" @click="goHome">返回</button>
         <button
           class="btn btn-primary"
-          :disabled="pickedIds.length === 0"
+          :disabled="pickedIds.length === 0 || dailyLineupInvalid"
           @click="confirmLineup"
         >
-          开始战斗
+          {{
+            dailyLineupInvalid
+              ? '每日挑战仅限 N/R 宠物出战'
+              : pickedIds.length === 0
+                ? '选择出战宠物'
+                : '开始战斗'
+          }}
         </button>
       </div>
     </section>

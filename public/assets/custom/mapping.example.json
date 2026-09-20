@@ -1,0 +1,10 @@
+{
+  "$comment": "复制为 mapping.json 生效。petBadges: 宠物id → 自定义头像（替换战斗塔上的 emoji 徽章）；enemies: 敌人id → 自定义精灵（覆盖 Kenney 单位）。文件路径相对于 public/assets/custom/。",
+  "petBadges": {
+    "tianyuan-cat": "pet_heads/example_head_1.png",
+    "tianyuan-dog": "pet_heads/example_head_2.png"
+  },
+  "enemies": {
+    "mouse": "enemies/你的小鼠图.png"
+  }
+}

@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 
+import { readFileSync } from 'node:fs'
 import { getDailyChallenge, todayStr } from '@/game/daily'
 import { router } from '@/router'
 import BattleView from '@/views/BattleView.vue'
@@ -58,5 +59,24 @@ describe('BattleView 编排层（每日挑战链路回归锁）', () => {
       expect(wrapper.text()).not.toContain('旺财')
     }
     wrapper.unmount()
+  })
+})
+
+describe('下一关导航与编队规则（回归锁）', () => {
+  it('App.vue 使用 fullPath 作为 RouterView key（路径变化强制重挂载）', () => {
+    const src = readFileSync('src/App.vue', 'utf-8')
+    expect(src).toContain(':key="route.fullPath"')
+  })
+
+  it('解锁链：通关 L1 后 unlockedLevelIds 含 L2', async () => {
+    const { createPinia, setActivePinia } = await import('pinia')
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const { useProfileStore } = await import('@/stores/profile')
+    const store = useProfileStore()
+    store.init()
+    expect(store.unlockedLevelIds).toEqual(['1'])
+    store.completeLevel('1', 2, 0)
+    expect(store.unlockedLevelIds).toContain('2')
   })
 })

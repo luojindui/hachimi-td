@@ -54,6 +54,8 @@ export interface DrawAnim {
   sinceSpawn?: number
   /** 面朝方向（弧度） */
   facing?: number
+  /** 炮塔瞄准角（弧度，精灵皮肤炮塔跟踪用） */
+  aimAngle?: number
   /** 减速中（冰霜标记） */
   slowed?: boolean
 }

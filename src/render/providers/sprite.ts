@@ -1,4 +1,5 @@
 import { CELL_SIZE } from '../../game/data/balance'
+import { customEnemy, customPetBadge } from '../../game/customSkin'
 import { getPet } from '../../game/data/pets'
 import { hashString, mulberry32 } from '../../game/rng'
 import type { LevelDef, LevelTheme, Rarity } from '../../game/types'
@@ -279,11 +280,61 @@ export function createKenneyProvider(vector: AssetProvider): AssetProvider {
       ctx.font = `${r * 1.3}px serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(visual.emoji, cx + heightPx * 0.32, cy - heightPx * 0.3 + 1)
+      const badge = customPetBadge(petId)
+      if (badge) {
+        // 自定义头像（本机自用素材叠加层）
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(cx + heightPx * 0.32, cy - heightPx * 0.32, r, 0, Math.PI * 2)
+        ctx.clip()
+        ctx.drawImage(
+          badge as unknown as CanvasImageSource,
+          cx + heightPx * 0.32 - r,
+          cy - heightPx * 0.32 - r,
+          r * 2,
+          r * 2,
+        )
+        ctx.restore()
+      } else {
+        ctx.fillText(visual.emoji, cx + heightPx * 0.32, cy - heightPx * 0.3 + 1)
+      }
       ctx.restore()
     },
 
     drawEnemy(ctx, enemyId, cx, cy, heightPx, anim?: DrawAnim): void {
+      // 自定义敌人素材（本机自用叠加层）优先
+      const custom = customEnemy(enemyId)
+      if (custom) {
+        const rotation = (anim?.facing ?? 0) + Math.PI / 2
+        const size = heightPx * 1.3
+        ctx.save()
+        ctx.translate(cx, cy)
+        ctx.rotate(rotation)
+        ctx.drawImage(
+          custom as unknown as CanvasImageSource,
+          -size / 2,
+          -size / 2,
+          size,
+          size,
+        )
+        ctx.restore()
+        if (anim?.flash) {
+          ctx.save()
+          ctx.globalAlpha = 0.5
+          ctx.globalCompositeOperation = 'lighter'
+          ctx.translate(cx, cy)
+          ctx.rotate(rotation)
+          ctx.drawImage(
+            custom as unknown as CanvasImageSource,
+            -size / 2,
+            -size / 2,
+            size,
+            size,
+          )
+          ctx.restore()
+        }
+        return
+      }
       const file = ENEMY_SPRITE[enemyId]
       if (!file || !cache[file]) {
         vector.drawEnemy?.(ctx, enemyId, cx, cy, heightPx, anim)

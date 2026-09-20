@@ -180,6 +180,8 @@ export interface TowerView {
   path: 'quick' | 'heavy' | null
   /** 建造格地形类型 */
   kind: 'normal' | 'high' | 'mine' | 'thicket'
+  /** 当前瞄准角（弧度） */
+  aimAngle: number
   cooldownRatio: number
   /** 放置时刻（逻辑秒），渲染层用于放置弹跳 */
   spawnAt: number

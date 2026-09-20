@@ -89,6 +89,8 @@ interface EngineTower {
   path: TowerPath | null
   /** 建造格地形类型 */
   kind: TowerKind
+  /** 当前瞄准角（弧度，0=向右） */
+  aimAngle: number
   x: number
   y: number
   cooldown: number
@@ -451,6 +453,7 @@ export class GameEngine {
       level: 1,
       path: null,
       kind: slot.kind ?? 'normal',
+      aimAngle: 0,
       x: slot.x,
       y: slot.y,
       cooldown: 0,
@@ -1449,6 +1452,7 @@ export class GameEngine {
         level: t.level,
         path: t.path,
         kind: t.kind,
+        aimAngle: t.aimAngle,
         /** 剩余冷却比例：刚发射 ≈1，就绪 =0 */
         cooldownRatio:
           t.lastInterval > 0

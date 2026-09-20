@@ -417,6 +417,7 @@ export function renderDynamic(
         t: animTime,
         phase: tower.slotIndex * 1.7,
         sinceSpawn,
+        aimAngle: tower.aimAngle,
       })
       ctx.restore()
     } else {
