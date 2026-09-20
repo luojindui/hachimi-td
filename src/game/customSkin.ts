@@ -57,6 +57,15 @@ export function customPetBadge(petId: string): HTMLImageElement | undefined {
   return badgeCache.get(petId)
 }
 
+/** 供测试注入徽章图（结构化类型，DOM/napi 通用） */
+export function installCustomBadgesForTesting(
+  images: Record<string, { width: number; height: number }>,
+): void {
+  for (const [k, v] of Object.entries(images)) {
+    badgeCache.set(k, v as unknown as HTMLImageElement)
+  }
+}
+
 export function customEnemy(enemyId: string): HTMLImageElement | undefined {
   return enemyCache.get(enemyId)
 }

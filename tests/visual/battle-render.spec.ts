@@ -159,8 +159,22 @@ describe('Kenney CC0 皮肤渲染', () => {
     })
     engine.placeTower(1, 'tianyuan-cat')
     for (let i = 0; i < 320; i++) engine.update(1 / 30)
+    // 注入测试徽章：验证大头宠物本体渲染路径
+    const { installCustomBadgesForTesting } = await import('@/game/customSkin')
+    const badgeCanvas = createCanvas(64, 64)
+    const bctx = badgeCanvas.getContext('2d')
+    bctx.fillStyle = '#ff2020'
+    bctx.fillRect(0, 0, 64, 64)
+    installCustomBadgesForTesting({ 'tianyuan-cat': badgeCanvas })
+
     renderStaticLayer(ctx, level)
     renderDynamic(ctx, engine.getSnapshot(), level, null, 3.3)
+
+    // 大头本体中心应为徽章红色（塔在 slot1=(3,1)，2x 画布中心 ≈ (448, 208)）
+    // 塔中心逻辑坐标 (3*64+32, 1*64+36) → 1x 画布 (224, 100)
+    const headPx = ctx.getImageData(224, 100, 1, 1).data
+    expect(headPx[0]!).toBeGreaterThan(180)
+    expect(headPx[1]!).toBeLessThan(120)
 
     // 结构化像素断言（防回归：全透明/错层/草地杂色静默通过）
     // 1) 草地区域：绿色主导且不透明
