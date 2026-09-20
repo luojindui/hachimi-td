@@ -3,6 +3,7 @@ import { useTemplateRef, watchEffect } from 'vue'
 
 import { CELL_SIZE } from '@/game/data/balance'
 import type { LevelDef, BattleSnapshot } from '@/game/types'
+import { assets } from '@/render/registry'
 import {
   battleCanvasSize,
   cellFromPoint,
@@ -26,12 +27,14 @@ const emit = defineEmits<{
 
 const canvasRef = useTemplateRef<HTMLCanvasElement>('canvas')
 
-/* 静态层缓存：场地/路径/装饰每关只渲染一次 */
+/* 静态层缓存：场地/路径/装饰按「关卡 + dpr + 素材源」缓存 */
 let staticCanvas: HTMLCanvasElement | null = null
-let staticFor: LevelDef | null = null
+let staticKey = ''
 
 function ensureStatic(level: LevelDef, dpr: number): HTMLCanvasElement | null {
-  if (staticFor === level && staticCanvas) return staticCanvas
+  // 素材源异步切换（矢量→精灵）或浏览器缩放后需重建
+  const key = `${level.id}:${dpr}:${assets().id}`
+  if (staticKey === key && staticCanvas) return staticCanvas
   const { width, height } = battleCanvasSize(level)
   const c = document.createElement('canvas')
   c.width = Math.round(width * dpr)
@@ -41,7 +44,7 @@ function ensureStatic(level: LevelDef, dpr: number): HTMLCanvasElement | null {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   renderStaticLayer(ctx, level)
   staticCanvas = c
-  staticFor = level
+  staticKey = key
   return c
 }
 
