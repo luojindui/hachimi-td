@@ -33,13 +33,19 @@ export function expandPathCells(path: readonly Vec2[]): Set<string> {
 }
 
 /** 各段长度（格） */
+const SEG_CACHE = new WeakMap<readonly Vec2[], number[]>()
+
+/** 段长缓存（WeakMap 按 path 数组引用缓存，热路径零重复计算） */
 export function segmentLengths(path: readonly Vec2[]): number[] {
+  const hit = SEG_CACHE.get(path)
+  if (hit) return hit
   const out: number[] = []
   for (let i = 0; i + 1 < path.length; i++) {
     const a = path[i]!
     const b = path[i + 1]!
     out.push(Math.abs(b.x - a.x) + Math.abs(b.y - a.y))
   }
+  SEG_CACHE.set(path, out)
   return out
 }
 

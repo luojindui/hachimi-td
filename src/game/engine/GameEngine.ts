@@ -251,6 +251,8 @@ export class GameEngine {
 
   private nextEnemyUid = 1
   private nextProjUid = 1
+  /** uid → 敌人索引（tickProjectiles 复用，避免每 tick 重建） */
+  private uidIndex = new Map<number, EngineEnemy>()
   private nextFloatUid = 1
   private nextEffectUid = 1
   private acc = 0
@@ -829,8 +831,9 @@ export class GameEngine {
   }
 
   private tickProjectiles(dt: number): void {
-    // 本 tick 的敌人索引，避免每弹线性查找
-    const byUid = new Map<number, EngineEnemy>()
+    // 本 tick 的敌人索引，避免每弹线性查找（Map 实例复用，clear 代替重建）
+    this.uidIndex.clear()
+    const byUid = this.uidIndex
     for (const enemy of this.enemies) byUid.set(enemy.uid, enemy)
 
     const survivors: EngineProjectile[] = []
