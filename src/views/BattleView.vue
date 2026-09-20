@@ -331,6 +331,10 @@ const settlement = ref<{
   milestoneReward?: number
   /** 每日任务完成情况 */
   tasksDone?: { clear: boolean; noLeak: boolean; fullLineup: boolean }
+  /** 解锁庆祝文案 */
+  celebrate?: string
+  /** 失败针对性建议 */
+  tip?: string
 } | null>(null)
 
 const nextLevelLabel = computed(() => {
@@ -388,6 +392,7 @@ watch(
       }
     } else if (outcome === 'victory') {
       const stars = starsFor(snap.baseHp, snap.baseMaxHp)
+      const endlessWasLocked = !profile.endlessUnlocked
       const result = profile.completeLevel(level.id, stars, snap.kills)
       catnipGained = result.catnipGained
       settlement.value = {
@@ -397,9 +402,26 @@ watch(
         kills: snap.kills,
         clearReward: result.clearReward,
         milestoneReward: result.milestoneReward,
+        celebrate:
+          level.id === '8' && endlessWasLocked ? '🔓 无尽模式已解锁！' : undefined,
       }
     } else {
-      settlement.value = { outcome, stars: 0, catnipGained: 0, kills: snap.kills }
+      // 失败建议：按本关敌人构成给出针对性提示
+      const hasFlying = level.waves.some((w) =>
+        w.entries.some((e) => getEnemy(e.enemyId).flying),
+      )
+      const hasArmored = level.waves.some((w) =>
+        w.entries.some((e) => getEnemy(e.enemyId).armor >= 30),
+      )
+      let tip = '尝试把核心宠物升到 Lv3，并合理利用三选一强化'
+      if (hasFlying && !lineupPetDefs().some((p) => p.targets !== 'ground')) {
+        tip = '本关有飞行单位——编队中加入对空宠物（如狸花猫）'
+      } else if (hasArmored) {
+        tip = '本关装甲较高——重击分支或破甲类强化更有效'
+      } else if (snap.baseHp <= 3) {
+        tip = '差一点点！尝试在路径前段布置减速宠物争取输出时间'
+      }
+      settlement.value = { outcome, stars: 0, catnipGained: 0, kills: snap.kills, tip }
     }
   },
 )

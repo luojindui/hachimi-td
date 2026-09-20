@@ -17,6 +17,10 @@ const props = defineProps<{
   milestoneReward?: number
   /** 每日任务完成情况 */
   tasksDone?: { clear: boolean; noLeak: boolean; fullLineup: boolean }
+  /** 解锁庆祝文案 */
+  celebrate?: string
+  /** 失败针对性建议 */
+  tip?: string
 }>()
 
 const emit = defineEmits<{
@@ -50,6 +54,8 @@ const A = assets()
         本次坚持到了第 <strong>{{ props.waveReached ?? 0 }}</strong> 波
       </p>
 
+      <p v-if="props.celebrate" class="celebrate">{{ props.celebrate }}</p>
+      <p v-if="props.outcome === 'defeat' && props.tip" class="tip">💡 {{ props.tip }}</p>
       <p class="line">
         击杀 <strong>{{ props.kills }}</strong> 只鼠贼 ·
         获得 <strong class="catnip">{{ A.icon('catnip') }} × {{ props.catnipGained }}</strong>

@@ -96,7 +96,24 @@ function handleClick(event: MouseEvent): void {
     emit('crateClick', { x: cell.x, y: cell.y })
     return
   }
-  emit('slotClick', slotIndexAt(props.level, cell.x, cell.y))
+  // 移动端容错：精确格无建造格时，尝试相邻偏移格（±0.4 格）
+  let slotIndex = slotIndexAt(props.level, cell.x, cell.y)
+  if (slotIndex === null) {
+    const cellW = rect.width / props.level.grid.cols
+    const cellH = rect.height / props.level.grid.rows
+    for (const [dx, dy] of [[0.4, 0], [-0.4, 0], [0, 0.4], [0, -0.4]] as const) {
+      const c2 = cellFromPoint(
+        props.level,
+        cssX + dx * cellW,
+        cssY + dy * cellH,
+        rect.width,
+      )
+      if (!c2) continue
+      slotIndex = slotIndexAt(props.level, c2.x, c2.y)
+      if (slotIndex !== null) break
+    }
+  }
+  emit('slotClick', slotIndex)
 }
 </script>
 

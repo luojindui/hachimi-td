@@ -120,6 +120,7 @@ function visibleCount(): number {
             :key="i"
             class="draw-card"
             :class="[`r-${r.rarity}`, { new: r.isNew }]"
+            :style="{ animationDelay: `${i * 0.09}s` }"
           >
             <span class="draw-emoji">{{ A.petVisual(r.petId).emoji }}</span>
             <span class="draw-name">{{ getPet(r.petId).name }}</span>
@@ -379,5 +380,21 @@ function visibleCount(): number {
   display: flex;
   justify-content: center;
   gap: 0.7rem;
+}
+</style>
+<style scoped>
+.draw-card {
+  animation: draw-card-pop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes draw-card-pop {
+  from {
+    transform: translateY(16px) rotateY(90deg) scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) rotateY(0) scale(1);
+    opacity: 1;
+  }
 }
 </style>

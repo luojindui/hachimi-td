@@ -269,6 +269,8 @@ export class GameEngine {
   private floats: EngineFloatText[] = []
   private effects: EngineEffect[] = []
   private crates: EngineCrate[] = []
+  /** crates 视图缓存（openCrate 置脏后重建） */
+  private cratesViewCache: CrateView[] | null = null
 
   private nextEnemyUid = 1
   private nextProjUid = 1
@@ -1291,6 +1293,7 @@ export class GameEngine {
 
   /** 开宝箱：获得小鱼干（40~80，10% 概率翻倍） */
   openCrate(crateId: number): { gold: number } | null {
+    this.cratesViewCache = null
     this.ensureEditable()
     const crate = this.crates.find((c) => c.id === crateId)
     if (!crate || crate.opened) return null
@@ -1405,6 +1408,19 @@ export class GameEngine {
 
   /* ---------------- 快照（渲染消费） ---------------- */
 
+  /** crates 视图缓存：openCrate 置脏后重建 */
+  private getCratesView(): CrateView[] {
+    if (this.cratesViewCache) return this.cratesViewCache
+    const view = this.crates.map((c) => ({
+      id: c.id,
+      x: c.x,
+      y: c.y,
+      opened: c.opened,
+    }))
+    this.cratesViewCache = view
+    return view
+  }
+
   getSnapshot(): BattleSnapshot {
     const enemies: EnemyView[] = this.enemies.map((e) => ({
       id: e.uid,
@@ -1462,12 +1478,7 @@ export class GameEngine {
       kind: e.kind,
       progress: Math.max(0, Math.min(1, (this.now - e.born) / e.life)),
     }))
-    const crates: CrateView[] = this.crates.map((c) => ({
-      id: c.id,
-      x: c.x,
-      y: c.y,
-      opened: c.opened,
-    }))
+    const crates = this.getCratesView()
 
     return {
       outcome: this.outcome,
