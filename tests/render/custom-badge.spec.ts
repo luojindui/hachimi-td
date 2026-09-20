@@ -3,16 +3,14 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { getLevel } from '@/game/data/levels'
-import { getPet } from '@/game/data/pets'
 import { GameEngine } from '@/game/engine/GameEngine'
 import {
   createKenneyProvider,
   installKenneySpritesForTesting,
-  kenneySpritesReady,
 } from '@/render/providers/sprite'
 import { createVectorProvider } from '@/render/providers/vector'
 import { installCustomBadgesForTesting, customPetBadge } from '@/game/customSkin'
-import { setAssetProvider, assets } from '@/render/registry'
+import { setAssetProvider } from '@/render/registry'
 import { renderBattle } from '@/render/battleRenderer'
 import { makePet } from '../game/engine/helpers'
 
@@ -51,7 +49,13 @@ describe('自定义徽章渲染管线（回归锁）', () => {
     engine.placeTower(1, 'tianyuan-cat')
     const canvas = createCanvas(832, 512)
     const ctx = canvas.getContext('2d')
-    renderBattle(ctx, engine.getSnapshot(), getLevel('1'), null, 0)
+    renderBattle(
+      ctx as unknown as Parameters<typeof renderBattle>[0],
+      engine.getSnapshot(),
+      getLevel('1'),
+      null,
+      0,
+    )
 
     // 徽章圆心 = 塔心 + (0.32*56, -0.32*56) = (224+18, 96-18) = (242, 78)
     const px = ctx.getImageData(242, 78, 1, 1).data
